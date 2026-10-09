@@ -1,5 +1,5 @@
-const V='nutriplanner-v1';
-const ARCHIVOS=['./','index.html','manifest.json','css/app.css','js/app.js','js/db.js','js/perfil.js','icons/icon-192.png','icons/icon-512.png'];
+const V='nutriplanner-v2';
+const ARCHIVOS=['./','index.html','manifest.json','css/app.css','js/app.js','js/db.js','js/perfil.js','js/vistas.js','js/menu.js','js/nutricion.js','js/datos.js','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(V).then(c=>c.addAll(ARCHIVOS))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 self.addEventListener('message',e=>{if(e.data==='actualizar')self.skipWaiting();});

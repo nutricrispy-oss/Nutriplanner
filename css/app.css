@@ -34,3 +34,15 @@ input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid 
 .nota{border-left:4px solid var(--ac);padding:8px 12px;background:var(--bg);border-radius:0 10px 10px 0;margin:10px 0;font-size:.92rem}
 .seg{display:flex;gap:8px}.seg .btn{flex:1}
 @media (prefers-reduced-motion:no-preference){main>*{animation:ent .18s ease-out}@keyframes ent{from{opacity:.4}}}
+.dias{display:flex;gap:6px;margin:8px 0}.dias button{flex:1;min-height:46px;border:1px solid var(--ln);border-radius:12px;background:var(--card);color:var(--tx);font:inherit;font-weight:600;cursor:pointer}.dias button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+[data-tema=oscuro] .dias button.on{color:#0b1410}
+.meal.hecha{border-color:var(--ok)}.meal h3{margin:4px 0}.mh{display:flex;justify-content:space-between}
+.fila .mini,.mini{min-height:44px;padding:0 12px;font-size:.9rem}
+.bar{height:10px;border-radius:5px;background:var(--ln);overflow:hidden;margin:2px 0 10px}.bar i{display:block;height:100%;background:var(--ac)}
+.bl{display:flex;justify-content:space-between;font-size:.9rem}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:flex;gap:10px;align-items:center;font-weight:500}.chk input{width:24px;min-height:24px}
+.ing{display:grid;grid-template-columns:1fr 84px auto;gap:8px;align-items:center;margin:8px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.hoja{background:var(--bg);width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.hoja h2{margin-top:0}
