@@ -1,4 +1,5 @@
 import {calc,escala} from './nutricion.js';
+import {MAR,CARO} from './datos.js';
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 export const DIAS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 export const SLOTS={desayuno:'Desayuno',mediamanana:'Media mañana',almuerzo:'Almuerzo',merienda:'Merienda',cena:'Cena'};
@@ -19,13 +20,15 @@ export function totalDia(dia,ctx,soloHechas=false){
   return t;
 }
 export function candidatos(slot,ctx){
-  const tipo=tipoDe(slot),bajo=ctx.perfil.enfoque==='Bajo en carbohidratos';
-  return ctx.recetas.filter(r=>r.tags.includes(tipo)&&!excluida(r,ctx.perfil,ctx.mapa)&&(!bajo||tipo==='colacion'||nutPorcion(r,ctx).cn<=35));
+  const tipo=tipoDe(slot),bajo=ctx.perfil.enfoque==='Bajo en carbohidratos',sinMar=/paragu/i.test(ctx.perfil.pais||'')&&!ctx.incluirMar;
+  return ctx.recetas.filter(r=>r.tags.includes(tipo)&&!(sinMar&&r.ing.some(([id])=>MAR.has(id)))&&!excluida(r,ctx.perfil,ctx.mapa)&&(!bajo||nutPorcion(r,ctx).cn<=(tipo==='colacion'?15:22)));
 }
 function puntaje(r,ctx,usados){
   let s=Math.random();
   if(ctx.favs.includes(r.id))s+=1;
   s-=2*(usados[r.id]||0);
+  if(r.ing.some(([id])=>CARO.has(id)))s-=.7;
+  const dp=ctx.despensa||{};s+=.25*r.ing.filter(([id])=>dp[id]&&dp[id].g>0).length;
   const cu=(ctx.perfil.cuesta||[]).map(norm).filter(Boolean);
   if(cu.some(c=>r.ing.some(([id])=>norm(ctx.mapa[id]?.n).includes(c))))s-=.5;
   return s;
@@ -38,13 +41,38 @@ export function elegir(slot,ctx,usados,evitar=[]){
 export function ajustar(comidas,ctx){
   const T=+ctx.perfil.kcal;if(!T)return;
   const tot=Object.values(comidas).reduce((s,m)=>s+nutMeal(m,ctx).kcal,0);if(!tot)return;
-  const k=Math.min(1.6,Math.max(.6,T/tot));
+  const totP=Object.values(comidas).reduce((s,m)=>s+nutMeal(m,ctx).p,0),P=+ctx.perfil.prot;
+  let k=T/tot;if(P&&totP)k=Math.min(k,Math.max(.6,1.3*P/totP));k=Math.min(1.6,Math.max(.6,k));
   for(const m of Object.values(comidas))m.factor=Math.max(.25,Math.round(m.factor*k*4)/4);
 }
+export function errorDia(comidas,ctx){
+  const t=totalDia({comidas},ctx),p=ctx.perfil;
+  const rel=(v,o,w)=>+o?w*Math.abs(v-o)/o:0;
+  let e=rel(t.kcal,p.kcal,1.2)+rel(t.p,p.prot,1)+rel(t.c,p.carb,.8)+rel(t.g,p.grasa,.6);
+  const fo=+p.fibra||25;if(t.fi<fo)e+=1.8*(fo-t.fi)/fo;else if(t.fi>45)e+=.5*(t.fi-45)/fo;
+  if(+p.prot&&t.p>1.4*p.prot)e+=1.0*(t.p-1.4*p.prot)/p.prot;
+  return e;
+}
+export function balancear(comidas,ctx){
+  const opts=[.5,.75,1,1.25,1.5,1.75,2,2.5];
+  for(let pasada=0;pasada<3;pasada++)for(const m of Object.values(comidas)){
+    let mejor=m.factor,eM=errorDia(comidas,ctx);
+    for(const f of opts){m.factor=f;const e=errorDia(comidas,ctx);if(e<eM-1e-9){eM=e;mejor=f;}}
+    m.factor=mejor;
+  }
+}
 export function armarDia(ctx,usados){
-  const comidas={};
-  for(const s of slotsPara(ctx.perfil.comidas)){const r=elegir(s,ctx,usados);if(r){comidas[s]={rid:r.id,factor:1,hecha:false};usados[r.id]=(usados[r.id]||0)+1;}}
-  ajustar(comidas,ctx);return {comidas};
+  let mejor=null,eM=1e9;
+  for(let i=0;i<90;i++){
+    const comidas={},hoy=[];
+    for(const s of slotsPara(ctx.perfil.comidas)){const r=elegir(s,ctx,usados,hoy);if(r){comidas[s]={rid:r.id,factor:1,hecha:false};hoy.push(r.id);}}
+    if(!Object.keys(comidas).length)break;
+    balancear(comidas,ctx);const e=errorDia(comidas,ctx);
+    if(e<eM){eM=e;mejor=comidas;}
+  }
+  const comidas=mejor||{};
+  Object.values(comidas).forEach(m=>usados[m.rid]=(usados[m.rid]||0)+1);
+  return {comidas};
 }
 export function generarSemana(ctx){const u={};return {lunes:lunesDe(),creada:new Date().toISOString(),dias:Array.from({length:7},()=>armarDia(ctx,u))};}
 export function alternativas(slot,ctx,actual,n=3){

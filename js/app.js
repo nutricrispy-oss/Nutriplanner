@@ -1,10 +1,13 @@
 import {leer,guardar,pedirPersistencia} from './db.js';
 import {asistente} from './perfil.js';
-import {cargar,menuView,recetasView,inicioView} from './vistas.js';
+import {cargar,menuView,recetasView,inicioView,ctx} from './vistas.js';
+import {comprasView} from './compras.js';
+import {progresoView} from './progreso.js';
+import {habitosForm} from './habitos.js';
 const $=s=>document.querySelector(s), vista=$('#vista');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const TITULOS={inicio:'Inicio',menu:'Mi menú',compras:'Compras',progreso:'Mi progreso',recetas:'Recetas',config:'Ajustes'};
-const FASE={compras:['Lista de compras, despensa y calendario','Fase 3'],progreso:['Seguimiento de peso y gráficos','Fase 4']};
+const FASE={progreso:['Seguimiento de peso y gráficos','Fase 4']};
 let perfil=null,ajustes={tema:'claro',nombreApp:'NutriPlanner'},instalar=null;
 
 function aplicarAjustes(){
@@ -28,12 +31,16 @@ function editarPerfil(){
 function config(){
   vista.innerHTML=`<div class="card"><h2>Apariencia</h2><div class="seg"><button class="btn ${ajustes.tema==='claro'?'':'sec'}" data-t="claro">Claro</button><button class="btn ${ajustes.tema==='oscuro'?'':'sec'}" data-t="oscuro">Oscuro</button></div>
    <label for="nom">Nombre de la app</label><input id="nom" value="${esc(ajustes.nombreApp)}" maxlength="30"></div>
+  <div class="card"><h2>Menús</h2><label class="chk"><input type="checkbox" id="mar" ${ajustes.incluirMar?'checked':''}>Incluir pescados de mar costosos (salmón, merluza)</label><p class="mut">Por defecto se evitan en Paraguay; los pescados de río y la tilapia sí se incluyen.</p></div>
+  <div id="hab"></div>
   <div class="card"><h2>Perfil</h2><button class="btn sec blk" id="ep">${perfil?'Editar mi perfil':'Crear mi perfil'}</button></div>
   <div class="card"><h2>Aplicación</h2><button class="btn sec blk" id="inst" ${instalar?'':'hidden'}>Instalar en pantalla de inicio</button>
-   <p class="mut" id="est">Versión 0.2 (Fase 2). Funciona sin conexión.</p></div>
+   <p class="mut" id="est">Versión 0.4 (Fase 4). Funciona sin conexión.</p></div>
   <div class="card"><h2>Privacidad</h2><p class="mut">Tus datos se guardan solo en este dispositivo y no se envían a ningún servidor. Pueden perderse si borras los datos del navegador o desinstalas la app; la copia de seguridad llegará en la Fase 5. Esta app no sustituye a un médico o nutricionista.</p></div>`;
   vista.querySelectorAll('[data-t]').forEach(b=>b.onclick=async()=>{ajustes.tema=b.dataset.t;aplicarAjustes();await guardarAjustes();config();});
   $('#nom').onchange=async e=>{ajustes.nombreApp=e.target.value.trim()||'NutriPlanner';aplicarAjustes();await guardarAjustes();};
+  $('#mar').onchange=async e=>{ajustes.incluirMar=e.target.checked;ctx.incluirMar=ajustes.incluirMar;await guardarAjustes();};
+  habitosForm($('#hab'),perfil,async np=>{perfil=np;perfil.actualizado=new Date().toISOString();await guardar('perfil','principal',perfil);await cargar(perfil);config();});
   $('#ep').onclick=()=>{location.hash='#inicio';editarPerfil();};
   $('#inst').onclick=async()=>{if(instalar){instalar.prompt();await instalar.userChoice;instalar=null;config();}};
 }
@@ -43,7 +50,7 @@ function render(){
   document.querySelectorAll('.nav a').forEach(a=>{a.classList.toggle('on',a.dataset.v===k);a.toggleAttribute('aria-current',a.dataset.v===k);});
   $('#titulo-vista').textContent=TITULOS[k];
   if(k==='inicio')inicio(); else if(k==='config')config();
-  else if(k==='menu')menuView(vista); else if(k==='recetas')recetasView(vista);
+  else if(k==='menu')menuView(vista); else if(k==='compras')comprasView(vista); else if(k==='progreso')progresoView(vista); else if(k==='recetas')recetasView(vista);
   else vista.innerHTML=`<div class="card"><h2>${FASE[k][0]}</h2><p class="mut">Esta sección se construirá en la ${FASE[k][1]}.</p></div>`;
 }
 function conexion(){
@@ -62,7 +69,7 @@ function sw(){
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();instalar=e;});
 addEventListener('hashchange',render);
 (async()=>{
-  try{ajustes=Object.assign(ajustes,await leer('ajustes','general')||{});perfil=await leer('perfil','principal')||null;await cargar(perfil);pedirPersistencia();}
+  try{ajustes=Object.assign(ajustes,await leer('ajustes','general')||{});ctx.incluirMar=!!ajustes.incluirMar;perfil=await leer('perfil','principal')||null;await cargar(perfil);pedirPersistencia();}
   catch(e){vista.innerHTML='<div class="card"><h2>No se pudo abrir el almacenamiento</h2><p class="err">Revisa que el navegador permita guardar datos en este sitio.</p></div>';}
   aplicarAjustes();conexion();sw();render();
 })();

@@ -46,3 +46,17 @@ input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid 
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .hoja{background:var(--bg);width:100%;max-width:640px;max-height:90vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
 .hoja h2{margin-top:0}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--ln)}.item:last-child{border:0}.item.ok span{text-decoration:line-through;color:var(--mut)}
+.item .q{color:var(--mut);font-size:.9rem;align-self:center}.item .acc{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.item .chk{margin:0}.pre{white-space:pre-wrap;font:inherit;background:var(--card);padding:12px;border-radius:12px}
+.mes{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cal span{font-size:.8rem;color:var(--mut)}
+.dc{min-height:48px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--mut);font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
+.dc.con{background:var(--card);color:var(--tx);border-color:var(--ac);cursor:pointer;font-weight:700}.dc.hoy{outline:2px solid var(--ac2)}.dc small{font-size:.65rem;font-weight:500}
+.solo-print{display:none}
+@media print{.nav,.top,.aviso,.no-print,.modal,button{display:none!important}body{background:#fff;color:#000;padding:0}.card{border:0;border-bottom:1px solid #ccc;border-radius:0;break-inside:avoid;background:#fff}.solo-print{display:block}}
+.graf{width:100%;height:auto;display:block}
+#imprimible{display:none}
+@page{size:A4;margin:12mm}
+@media print{body.imprimiendo>*:not(#imprimible){display:none!important}body.imprimiendo #imprimible{display:block;color:#000;background:#fff;font:11pt/1.4 system-ui,sans-serif}
+#imprimible h1{font-size:18pt;margin:0 0 4px}#imprimible h2{font-size:13pt;margin:10px 0 4px;border-bottom:1px solid #999}.pd{break-inside:avoid;margin-bottom:8px}.pm{margin:4px 0}#imprimible small{color:#333}}

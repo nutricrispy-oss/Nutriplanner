@@ -2,13 +2,16 @@ import {leer,guardar,borrar,todo} from './db.js';
 import {ALIMENTOS,RECETAS,FUENTE} from './datos.js';
 import {calc,escala,r1,esc,linea} from './nutricion.js';
 import * as M from './menu.js';
-export const ctx={perfil:null,recetas:[],porId:{},mapa:{},favs:[],semana:null};
+import {historialView} from './historial.js';
+import * as H from './habitos.js';
+export const ctx={pesos:[],despensa:{},incluirMar:false,perfil:null,recetas:[],porId:{},mapa:{},favs:[],semana:null};
 const TAGS={desayuno:'Desayuno',almuerzo:'Almuerzo',cena:'Cena',colacion:'Colación'};
 const hoy=()=>M.fechaISO(), idxHoy=()=>(new Date().getDay()+6)%7;
 const esActual=()=>ctx.semana&&ctx.semana.lunes===M.lunesDe();
 const fechaDia=i=>{const d=new Date(ctx.semana.lunes+'T12:00:00');d.setDate(d.getDate()+i);return M.fechaISO(d);};
 const guardarSemana=()=>guardar('menus','semana-'+ctx.semana.lunes,ctx.semana);
 const registro=async f=>(await leer('menus','registro-'+f))||{extras:[]};
+const pc=(a,b)=>b?Math.round(a/b*100):0;
 const sg=x=>(x>=0?'+':'−')+r1(Math.abs(x));
 export async function cargar(perfil){
   ctx.perfil=perfil;
@@ -16,16 +19,18 @@ export async function cargar(perfil){
   ctx.mapa={};[...ALIMENTOS,...extra].forEach(a=>ctx.mapa[a.id]=a);
   ctx.recetas=[...RECETAS,...propias];ctx.porId=Object.fromEntries(ctx.recetas.map(r=>[r.id,r]));
   ctx.favs=(await leer('ajustes','favs'))||[];
+  ctx.despensa=(await leer('despensa','inv'))||{};
+  ctx.pesos=(await todo('peso')).filter(x=>x&&x.f&&x.kg).sort((a,b)=>a.f.localeCompare(b.f)||a.ts-b.ts);
   ctx.semana=(await leer('menus','semana-'+M.lunesDe()))||null;
 }
-function modal(html){
+export function modal(html){
   const d=document.createElement('div');d.className='modal';
   d.innerHTML=`<div class="hoja" role="dialog" aria-modal="true">${html}</div>`;
   d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))d.remove();});
   document.body.append(d);return d;
 }
 const barra=(l,v,o,u)=>{const p=o?Math.min(100,Math.round(v/o*100)):0;return `<div class="bl"><span>${l}</span><span>${Math.round(v)}${o?' / '+Math.round(o):''} ${u}</span></div><div class="bar"><i style="width:${p}%"></i></div>`;};
-const barras=t=>[['Calorías','kcal',ctx.perfil.kcal,'kcal'],['Proteínas','p',ctx.perfil.prot,'g'],['Carbohidratos','c',ctx.perfil.carb,'g'],['Grasas','g',ctx.perfil.grasa,'g']].map(([l,k,o,u])=>barra(l,t[k],+o||0,u)).join('');
+const barras=t=>[['Calorías','kcal',ctx.perfil.kcal,'kcal'],['Proteínas','p',ctx.perfil.prot,'g'],['Carbohidratos','c',ctx.perfil.carb,'g'],['Grasas','g',ctx.perfil.grasa,'g'],['Fibra (mín.)','fi',ctx.perfil.fibra||25,'g']].map(([l,k,o,u])=>barra(l,t[k],+o||0,u)).join('');
 async function consumido(fecha,dia){
   const t=dia?M.totalDia(dia,ctx,true):calc([],ctx.mapa),reg=await registro(fecha);
   const e=calc(reg.extras.map(x=>[x.id,x.g]),ctx.mapa);for(const k in t)t[k]+=e[k];
@@ -37,40 +42,56 @@ const sinPerfil=c=>{c.innerHTML=`<div class="card"><h2>Primero crea tu perfil</h
 export async function inicioView(c){
   const p=ctx.perfil,dia=esActual()?ctx.semana.dias[idxHoy()]:null,{t}=await consumido(hoy(),dia);
   const prox=dia&&Object.keys(M.SLOTS).find(s=>dia.comidas[s]&&!dia.comidas[s].hecha);
+  const aguaF='agua-'+hoy(),ag=(await leer('menus',aguaF))||{ml:0},obj=H.aguaObjetivo(p),ay=H.estadoAyuno(p);
+  const pu=ctx.pesos.length?ctx.pesos[ctx.pesos.length-1].kg:p.peso;
   c.innerHTML=`<div class="card"><h2>Hola, ${esc(p.nombre)}</h2>${dia?`<p class="mut">Tu menú semanal está listo.</p>${prox?`<div class="nota"><b>Próxima comida:</b> ${M.SLOTS[prox]}, ${esc(ctx.porId[dia.comidas[prox].rid]?.n)}</div>`:'<p>Ya registraste todas las comidas de hoy.</p>'}<a class="btn blk" href="#menu">Ver mi menú</a>`:`<p class="mut">Aún no tienes menú para esta semana.</p><a class="btn blk" href="#menu">Generar menú semanal</a>`}</div>
+  ${ay?`<div class="card"><h2>Ayuno ${esc(ay.prot)}</h2><p>${esc(ay.txt)}</p><p class="mut">Ventana de comida: ${ay.rango}</p></div>`:''}
   <div class="card"><h2>Progreso de hoy</h2>${barras(t)}<p class="mut">Cuenta las comidas marcadas como hechas y los alimentos que agregues en la calculadora.</p></div>
-  <div class="card"><h2>Peso</h2><div class="kv"><span>Actual</span><b>${p.peso??'—'} kg</b></div><div class="kv"><span>Objetivo</span><b>${p.pesoObj||'—'} kg</b></div></div>
+  <div class="card"><h2>Agua</h2>${barra('Hoy',ag.ml,obj||0,'ml')}${obj?'':'<p class="mut">La cantidad de líquidos la indica tu profesional; aquí solo llevas el registro.</p>'}<div class="fila"><button class="btn sec mini" data-ag="250">+250 ml</button><button class="btn sec mini" data-ag="500">+500 ml</button><button class="btn sec mini" data-ag="-250" aria-label="Deshacer 250 ml">Deshacer</button></div></div>
+  <div class="card"><h2>Peso</h2><div class="kv"><span>Más reciente</span><b>${pu??'—'} kg</b></div><div class="kv"><span>Objetivo</span><b>${p.pesoObj||'—'} kg</b></div></div>
   <a class="btn sec blk" href="#compras">Lista de compras</a>`;
+  c.onclick=async e=>{const b=e.target.closest('[data-ag]');if(!b)return;ag.ml=Math.max(0,Math.min(10000,ag.ml+ +b.dataset.ag));await guardar('menus',aguaF,ag);inicioView(c);};
 }
 
-/* ---------- MI MENÚ ---------- */
 let sel=idxHoy();
+let modoMenu='semana';
 export async function menuView(c){
+  if(!ctx.perfil)return sinPerfil(c);
+  c.innerHTML=`<div class="seg"><button class="btn ${modoMenu==='semana'?'':'sec'}" data-modo="semana">Semana</button><button class="btn ${modoMenu==='hist'?'':'sec'}" data-modo="hist">Historial</button></div><div id="mm"></div>`;
+  c.onclick=e=>{const b=e.target.closest('[data-modo]');if(b){modoMenu=b.dataset.modo;menuView(c);}};
+  const mm=c.querySelector('#mm');
+  if(modoMenu==='hist')await historialView(mm);else await menuSemana(mm);
+}
+async function menuSemana(c){
   if(!ctx.perfil)return sinPerfil(c);
   c.onclick=e=>acciones(e,c);
   if(!ctx.semana){c.innerHTML=`<div class="card"><h2>Tu menú semanal</h2><p class="mut">Genera una semana según tus objetivos y preferencias. Después puedes cambiar cualquier comida.</p><button class="btn blk" data-act="gen">Generar menú semanal</button><button class="btn sec blk" data-act="copiar" style="margin-top:10px">Copiar semana anterior</button></div>`;return;}
   const dia=ctx.semana.dias[sel],{t:cons}=await consumido(fechaDia(sel),dia),plan=M.totalDia(dia,ctx);
   const slots=Object.keys(M.SLOTS).filter(s=>dia.comidas[s]);
   c.innerHTML=`<div class="dias">${M.DIAS.map((d,i)=>`<button class="${i===sel?'on':''}" data-act="dia" data-i="${i}" ${i===sel?'aria-current="true"':''}>${d}</button>`).join('')}</div>
-  <div class="card"><h2>${M.DIAS[sel]} ${fechaDia(sel).slice(8)}/${fechaDia(sel).slice(5,7)}</h2><p class="mut">Planificado: ${Math.round(plan.kcal)} kcal · P ${r1(plan.p)} g · C neto ${r1(plan.cn)} g</p>${barras(cons)}<p class="mut">Barras: lo realmente consumido (comidas hechas + extras).</p></div>
-  ${slots.map(s=>{const m=dia.comidas[s],r=ctx.porId[m.rid],n=M.nutMeal(m,ctx);return `<div class="card meal ${m.hecha?'hecha':''}"><div class="mh"><b>${M.SLOTS[s]}</b><span class="mut">${r.t} min</span></div><h3>${esc(r.n)}</h3><p class="mut">${m.factor} porc. · ${linea(n)}</p><div class="fila"><button class="btn ${m.hecha?'sec':''} mini" data-act="hecha" data-s="${s}">${m.hecha?'Desmarcar':'Marcar hecha'}</button><button class="btn sec mini" data-act="cambiar" data-s="${s}">Cambiar</button><button class="btn sec mini" data-act="editar" data-s="${s}">Ver / editar</button></div></div>`;}).join('')||'<div class="card"><p class="mut">No hay recetas compatibles con tus restricciones. Agrega una propia en Recetas.</p></div>'}
+  <div class="card"><h2>${M.DIAS[sel]} ${fechaDia(sel).slice(8)}/${fechaDia(sel).slice(5,7)}</h2><p class="mut">Planificado: ${Math.round(plan.kcal)} kcal · P ${r1(plan.p)} g · C neto ${r1(plan.cn)} g · Fibra ${r1(plan.fi)} g</p><p class="mut">Reparto de calorías: P ${pc(plan.p*4,plan.kcal)}% · C ${pc(plan.c*4,plan.kcal)}% · G ${pc(plan.g*9,plan.kcal)}%</p>${barras(cons)}<p class="mut">Barras: lo realmente consumido (comidas hechas + extras).</p></div>
+  ${slots.map((s,ix)=>{const m=dia.comidas[s],r=ctx.porId[m.rid],n=M.nutMeal(m,ctx);return `<div class="card meal ${m.hecha?'hecha':''}"><div class="mh"><b>${M.SLOTS[s]}</b><span class="mut">${H.horaSugerida(ctx.perfil,ix,slots.length)?'≈ '+H.horaSugerida(ctx.perfil,ix,slots.length)+' · ':''}${r.t} min</span></div><h3>${esc(r.n)}</h3><p class="mut">${m.factor} porc. · ${linea(n)}</p><div class="fila"><button class="btn ${m.hecha?'sec':''} mini" data-act="hecha" data-s="${s}">${m.hecha?'Desmarcar':'Marcar hecha'}</button><button class="btn sec mini" data-act="cambiar" data-s="${s}">Cambiar</button><button class="btn sec mini" data-act="editar" data-s="${s}">Ver / editar</button></div></div>`;}).join('')||'<div class="card"><p class="mut">No hay recetas compatibles con tus restricciones. Agrega una propia en Recetas.</p></div>'}
   <div class="fila"><button class="btn sec" data-act="genDia">Regenerar este día</button><button class="btn sec" data-act="gen">Semana nueva</button></div>
-  <button class="btn sec blk" data-act="copiar" style="margin-top:10px">Copiar semana anterior</button>`;
+  <button class="btn sec blk" data-act="bal" style="margin-top:10px">Balancear porciones del día</button>
+  <button class="btn sec blk" data-act="copiar" style="margin-top:10px">Copiar semana anterior</button>
+  <div class="card"><h2>Exportar</h2><label class="chk"><input type="checkbox" id="inclLista">Incluir lista de compras</label><div class="fila"><button class="btn mini" data-act="pdf">Guardar PDF</button><button class="btn sec mini" data-act="imp">Imprimir</button><button class="btn sec mini" data-act="comp">Compartir</button></div></div>`;
 }
 async function acciones(e,c){
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,s=b.dataset.s;
-  if(a==='dia'){sel=+b.dataset.i;return menuView(c);}
-  if(a==='gen'){if(ctx.semana&&!confirm('Esto reemplaza el menú de esta semana, incluidas las comidas marcadas. ¿Continuar?'))return;ctx.semana=M.generarSemana(ctx);await guardarSemana();return menuView(c);}
-  if(a==='genDia'){if(!confirm('¿Regenerar este día?'))return;const u={};ctx.semana.dias.forEach((d,i)=>{if(i!==sel)Object.values(d.comidas).forEach(m=>u[m.rid]=(u[m.rid]||0)+1);});ctx.semana.dias[sel]=M.armarDia(ctx,u);await guardarSemana();return menuView(c);}
+  if(a==='dia'){sel=+b.dataset.i;return menuSemana(c);}
+  if(a==='gen'){if(ctx.semana&&!confirm('Esto reemplaza el menú de esta semana, incluidas las comidas marcadas. ¿Continuar?'))return;ctx.semana=M.generarSemana(ctx);await guardarSemana();return menuSemana(c);}
+  if(a==='genDia'){if(!confirm('¿Regenerar este día?'))return;const u={};ctx.semana.dias.forEach((d,i)=>{if(i!==sel)Object.values(d.comidas).forEach(m=>u[m.rid]=(u[m.rid]||0)+1);});ctx.semana.dias[sel]=M.armarDia(ctx,u);await guardarSemana();return menuSemana(c);}
   if(a==='copiar'){
     const p=new Date(M.lunesDe()+'T12:00:00');p.setDate(p.getDate()-7);
     const ant=await leer('menus','semana-'+M.fechaISO(p));
     if(!ant)return alert('No hay una semana anterior guardada.');
     if(ctx.semana&&!confirm('Esto reemplaza el menú de esta semana. ¿Continuar?'))return;
     ctx.semana=JSON.parse(JSON.stringify(ant));ctx.semana.lunes=M.lunesDe();ctx.semana.dias.forEach(d=>Object.values(d.comidas).forEach(m=>m.hecha=false));
-    await guardarSemana();return menuView(c);
+    await guardarSemana();return menuSemana(c);
   }
-  if(a==='hecha'){const m=ctx.semana.dias[sel].comidas[s];m.hecha=!m.hecha;await guardarSemana();return menuView(c);}
+  if(a==='hecha'){const m=ctx.semana.dias[sel].comidas[s];m.hecha=!m.hecha;await guardarSemana();return menuSemana(c);}
+  if(a==='bal'){M.balancear(ctx.semana.dias[sel].comidas,ctx);await guardarSemana();return menuSemana(c);}
+  if(a==='pdf'||a==='imp'||a==='comp'){const x=await import('./exportar.js');return x.exportarMenu(a,!!c.querySelector('#inclLista')?.checked);}
   if(a==='cambiar')return cambiar(s,c);
   if(a==='editar')return editar(s,c);
 }
@@ -81,7 +102,7 @@ function cambiar(s,c){
   h.onclick=async e=>{
     if(e.target.closest('[data-more]'))return draw();
     const b=e.target.closest('[data-pick]');if(!b)return;
-    M.cambiarComida(dia,s,b.dataset.pick,ctx);await guardarSemana();mod.remove();menuView(c);
+    M.cambiarComida(dia,s,b.dataset.pick,ctx);await guardarSemana();mod.remove();menuSemana(c);
   };
   draw();
 }
@@ -104,7 +125,7 @@ function editar(s,c){
     if(e.target.closest('[data-ok]')){
       if(!(factor>=.25&&factor<=6))msg='Las porciones deben estar entre 0,25 y 6.';
       else if(ing.some(x=>!(x[1]>0&&x[1]<=5000)))msg='Cada cantidad debe estar entre 1 y 5000.';
-      else{m.ing=ing;m.factor=factor;await guardarSemana();mod.remove();return menuView(c);}
+      else{m.ing=ing;m.factor=factor;await guardarSemana();mod.remove();return menuSemana(c);}
       draw();
     }
   };
@@ -120,7 +141,7 @@ export async function recetasView(c){
   const sub=c.querySelector('#sub');
   if(pest==='recetas')listaRecetas(sub);else await calculadora(sub);
 }
-const ops=(a)=>a.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+export const ops=(a)=>a.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
 function listaRecetas(sub){
   sub.innerHTML=`<div class="card"><label for="q">Buscar por nombre o ingrediente</label><input id="q" type="search" placeholder="Ej.: pollo">
   <div class="dos"><div><label for="ft">Tipo</label><select id="ft"><option value="">Todos</option>${ops(Object.entries(TAGS))}</select></div><div><label for="ftm">Tiempo</label><select id="ftm"><option value="">Cualquiera</option>${ops([[15,'Hasta 15 min'],[30,'Hasta 30 min'],[60,'Hasta 60 min']])}</select></div></div>
