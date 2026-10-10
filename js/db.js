@@ -22,3 +22,20 @@ export const guardar=(alm,k,v)=>tx(alm,'readwrite',s=>s.put(v,k));
 export const borrar=(alm,k)=>tx(alm,'readwrite',s=>s.delete(k));
 export const todo=(alm)=>tx(alm,'readonly',s=>s.getAll());
 export const pedirPersistencia=()=>navigator.storage&&navigator.storage.persist?navigator.storage.persist():Promise.resolve(false);
+export const LISTA_ALMACENES=ALMACENES;
+export async function volcar(){
+  const db=await abrir();
+  return new Promise((ok,ko)=>{
+    const out={},t=db.transaction(ALMACENES,'readonly');
+    ALMACENES.forEach(a=>{out[a]={};const q=t.objectStore(a).openCursor();q.onsuccess=()=>{const c=q.result;if(c){out[a][c.key]=c.value;c.continue();}};});
+    t.oncomplete=()=>ok(out);t.onerror=()=>ko(t.error);
+  });
+}
+export async function restaurar(datos){
+  const db=await abrir(),st=Object.keys(datos);
+  return new Promise((ok,ko)=>{
+    const t=db.transaction(st,'readwrite');
+    st.forEach(a=>{const s=t.objectStore(a);s.clear();for(const k in datos[a])s.put(datos[a][k],k);});
+    t.oncomplete=()=>ok();t.onerror=()=>ko(t.error);t.onabort=()=>ko(t.error);
+  });
+}

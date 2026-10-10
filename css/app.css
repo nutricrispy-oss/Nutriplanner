@@ -60,3 +60,9 @@ input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid 
 @page{size:A4;margin:12mm}
 @media print{body.imprimiendo>*:not(#imprimible){display:none!important}body.imprimiendo #imprimible{display:block;color:#000;background:#fff;font:11pt/1.4 system-ui,sans-serif}
 #imprimible h1{font-size:18pt;margin:0 0 4px}#imprimible h2{font-size:13pt;margin:10px 0 4px;border-bottom:1px solid #999}.pd{break-inside:avoid;margin-bottom:8px}.pm{margin:4px 0}#imprimible small{color:#333}}
+.bloq{margin-left:auto;border:0;background:none;font-size:1.4rem;min-width:44px;min-height:44px;cursor:pointer}
+.bloqueo{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px}
+body.bloqueada main,body.bloqueada .nav,body.bloqueada .top{visibility:hidden}
+@media print{.tc{width:100%;border-collapse:collapse;font-size:9pt}.tc th,.tc td{border:1px solid #999;padding:3px 5px;vertical-align:top;text-align:left}.tc small{color:#333}.tc{break-inside:avoid}
+#imprimible .sub{margin:0 0 6px;font-size:9pt}#imprimible .cols{columns:3;column-gap:14px;font-size:9pt}#imprimible .cols p{margin:4px 0 0}#imprimible .cols ul{margin:0;padding-left:14px}#imprimible .cols li{break-inside:avoid}#imprimible .pie{font-size:8pt;color:#333;margin-top:6px}
+body:not(.imprimiendo) #sub{column-count:2;column-gap:12px;font-size:10pt}body:not(.imprimiendo) #sub .card{break-inside:avoid;margin:4px 0;padding:6px}body:not(.imprimiendo) .item{padding:3px 0}}

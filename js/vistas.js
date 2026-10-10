@@ -91,7 +91,7 @@ async function acciones(e,c){
   }
   if(a==='hecha'){const m=ctx.semana.dias[sel].comidas[s];m.hecha=!m.hecha;await guardarSemana();return menuSemana(c);}
   if(a==='bal'){M.balancear(ctx.semana.dias[sel].comidas,ctx);await guardarSemana();return menuSemana(c);}
-  if(a==='pdf'||a==='imp'||a==='comp'){const x=await import('./exportar.js');return x.exportarMenu(a,!!c.querySelector('#inclLista')?.checked);}
+  if(a==='pdf'||a==='imp'||a==='comp'){const x=await import('./exportar.js');return x.exportarMenu(a,!!c.querySelector('#inclLista')?.checked,!!c.querySelector('#detPdf')?.checked);}
   if(a==='cambiar')return cambiar(s,c);
   if(a==='editar')return editar(s,c);
 }

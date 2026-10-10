@@ -13,7 +13,7 @@ async function listaItems(){
   const est=e&&e.lunes===ctx.semana.lunes?e:{personas:1,soloPend:false,quitados:{},manuales:[]};
   return {items:armarLista(inv,pr,ctx.semana,ctx.porId,ctx.mapa,est).filter(i=>!est.quitados[i.id]&&i.falta>0),est};
 }
-async function html(conLista){
+async function htmlDetallado(conLista){
   const s=ctx.semana,p=ctx.perfil;
   let h=`<h1>Menú semanal</h1><p>${p.nombre?esc(p.nombre)+' · ':''}Semana del ${fF(s.lunes)} al ${fF(sumar(s.lunes,6))} · Generado el ${fF(M.fechaISO())}</p>`;
   s.dias.forEach((d,i)=>{
@@ -27,13 +27,26 @@ async function html(conLista){
       return `<p><b>${SECCIONES[k]}</b></p><ul>${L.map(i=>`<li>${esc(i.n)}: ${fmt(i.falta,i.id)}</li>`).join('')}${Mn.map(m=>`<li>${esc(m.n)}${m.q?': '+esc(m.q):''}</li>`).join('')}</ul>`;}).join('')+'</section>';}
   return h+'<p><small>Valores nutricionales estimados con datos de referencia. No sustituyen la indicación de un médico o nutricionista.</small></p>';
 }
+async function htmlCompacto(conLista){
+  const s=ctx.semana,p=ctx.perfil,cols=Object.keys(M.SLOTS).filter(k=>s.dias.some(d=>d.comidas[k]));
+  let h=`<h1>Menú semanal</h1><p class="sub">${p.nombre?esc(p.nombre)+' · ':''}Semana del ${fF(s.lunes)} al ${fF(sumar(s.lunes,6))} · Generado el ${fF(M.fechaISO())}</p>`;
+  h+=`<table class="tc"><thead><tr><th>Día</th>${cols.map(k=>`<th>${M.SLOTS[k]}</th>`).join('')}<th>Total del día</th></tr></thead><tbody>`;
+  s.dias.forEach((d,i)=>{const t=M.totalDia(d,ctx);
+    h+=`<tr><td><b>${M.DIAS[i]}</b><br><small>${fF(sumar(s.lunes,i)).slice(0,5)}</small></td>${cols.map(k=>{const m=d.comidas[k],r=m&&ctx.porId[m.rid];if(!r)return '<td>—</td>';const n=M.nutMeal(m,ctx);
+      return `<td>${esc(r.n)}${m.factor!==1?` (${m.factor} porc.)`:''}<br><small>${Math.round(n.kcal)} kcal · P${Math.round(n.p)} C${Math.round(n.c)} G${Math.round(n.g)}</small></td>`;}).join('')}<td><b>${Math.round(t.kcal)} kcal</b><br><small>P${Math.round(t.p)} C${Math.round(t.c)} G${Math.round(t.g)}<br>Fibra ${Math.round(t.fi)}</small></td></tr>`;});
+  h+='</tbody></table>';
+  if(conLista){const {items,est}=await listaItems();
+    h+=`<h2>Lista de compras</h2><div class="cols">`+Object.keys(SECCIONES).map(k=>{const L=items.filter(i=>i.sec===k),Mn=est.manuales.filter(m=>m.sec===k);if(!L.length&&!Mn.length)return '';
+      return `<p><b>${SECCIONES[k]}</b></p><ul>${L.map(i=>`<li>${esc(i.n)}: ${fmt(i.falta,i.id)}</li>`).join('')}${Mn.map(m=>`<li>${esc(m.n)}${m.q?': '+esc(m.q):''}</li>`).join('')}</ul>`;}).join('')+'</div>';}
+  return h+'<p class="pie">Valores estimados con datos de referencia (P proteínas, C carbohidratos, G grasas, en gramos). No sustituyen la indicación de un médico o nutricionista.</p>';
+}
 async function texto(conLista){
   const s=ctx.semana,p=ctx.perfil;let t=`Menú semanal${p.nombre?' de '+p.nombre:''} (semana del ${fF(s.lunes)})\n`;
   s.dias.forEach((d,i)=>{t+=`\n${M.DIAS[i]}\n`;Object.keys(M.SLOTS).filter(k=>d.comidas[k]).forEach(k=>{const m=d.comidas[k];t+=`- ${M.SLOTS[k]}: ${ctx.porId[m.rid]?.n||'(receta eliminada)'} (${Math.round(M.nutMeal(m,ctx).kcal)} kcal)\n`;});});
   if(conLista){const {items,est}=await listaItems();t+='\nLista de compras\n';items.forEach(i=>t+=`☐ ${i.n}: ${fmt(i.falta,i.id)}\n`);est.manuales.forEach(m=>t+=`☐ ${m.n}${m.q?': '+m.q:''}\n`);}
   return t;
 }
-export async function exportarMenu(modo,conLista){
+export async function exportarMenu(modo,conLista,detallado=false){
   if(!ctx.semana)return alert('Primero genera tu menú semanal.');
   if(modo==='comp'){
     const t=await texto(conLista);
@@ -41,9 +54,10 @@ export async function exportarMenu(modo,conLista){
     return void window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
   }
   let div=document.getElementById('imprimible');if(!div){div=document.createElement('div');div.id='imprimible';document.body.append(div);}
-  div.innerHTML=await html(conLista);
+  div.innerHTML=detallado?await htmlDetallado(conLista):await htmlCompacto(conLista);
+  const pg=document.createElement('style');pg.textContent=detallado?'@page{size:A4 portrait;margin:12mm}':'@page{size:A4 landscape;margin:8mm}';document.head.append(pg);
   if(modo==='pdf')alert('En la pantalla siguiente elige "Guardar como PDF" como destino de impresión.');
   document.body.classList.add('imprimiendo');
-  const fin=()=>{document.body.classList.remove('imprimiendo');div.innerHTML='';removeEventListener('afterprint',fin);};
+  const fin=()=>{pg.remove();document.body.classList.remove('imprimiendo');div.innerHTML='';removeEventListener('afterprint',fin);};
   addEventListener('afterprint',fin);setTimeout(()=>window.print(),80);
 }
