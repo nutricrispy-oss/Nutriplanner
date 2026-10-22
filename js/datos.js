@@ -66,14 +66,154 @@ const A=[
 ['berenjena','Berenjena cocida','verdura',35,.8,8.7,2.5,.2],
 ['acelga','Acelga cocida','verdura',20,1.9,4.1,2.1,.1],
 ['remolacha','Remolacha cocida','verdura',44,1.7,10,2,.2],
-['chaucha','Chauchas cocidas','verdura',35,1.9,7.9,3.2,.3]
+['chaucha','Chauchas cocidas','verdura',35,1.9,7.9,3.2,.3],
+['arrozint','Arroz integral cocido','cereal',123,2.7,25.6,1.6,1],
+['pastaint','Pasta integral cocida','cereal',124,5.3,26.5,4.5,.5],
+['quinoa','Quinoa cocida','cereal',120,4.4,21.3,2.8,1.9]
 ];
+
+// Tabla de consulta: gramos de alimento que equivalen a 1 ración de HC (10 g de hidratos de carbono) e IG. Transcripción parcial.
+const TH=`Lácteos|Leche desnatada|200|32
+Lácteos|Leche semidesnatada|200|30
+Lácteos|Leche entera|200|27
+Lácteos|Leche condensada|20|61
+Lácteos|Leche en polvo|25|30
+Lácteos|Kéfir|200|35
+Lácteos|Cuajada|175|35
+Lácteos|Flan|45|
+Lácteos|Helado de crema|50|60
+Lácteos|Queso fresco|250|35
+Lácteos|Yogur natural|200|35
+Lácteos|Yogur desnatado de sabores o fruta|150|35
+Lácteos|Yogur entero de sabores o fruta|70|35
+Lácteos|Yogur líquido|70|40
+Lácteos|Petit Suisse|75|40
+Lácteos|Natillas|50|
+Cereales y derivados|Arroz blanco hervido|38|70
+Cereales y derivados|Arroz integral hervido|40|50
+Cereales y derivados|Avena hervida|34|40
+Cereales y derivados|Boniato (batata)|50|50
+Cereales y derivados|Cebada hervida|42|45
+Cereales y derivados|Cuscús cocido|45|65
+Cereales y derivados|Fideos de arroz hervidos|50|65
+Cereales y derivados|Garbanzo hervido|55|35
+Cereales y derivados|Judías blancas hervidas|55|35
+Cereales y derivados|Lentejas hervidas|50|35
+Cereales y derivados|Maíz en lata|50|65
+Cereales y derivados|Mijo cocido|53|70
+Cereales y derivados|Pan blanco|20|70
+Cereales y derivados|Pan de centeno|20|65
+Cereales y derivados|Pan de molde|20|85
+Cereales y derivados|Pan integral|23|40
+Cereales y derivados|Pasta hervida|45|50
+Cereales y derivados|Pasta integral hervida|45|45
+Cereales y derivados|Patata (papa) hervida|65|65
+Cereales y derivados|Patata al horno o asada|35|62
+Cereales y derivados|Patatas fritas|30|70
+Cereales y derivados|Quinoa hervida|48|35
+Cereales y derivados|Tapioca hervida|33|84
+Cereales y derivados|Trigo sarraceno hervido|42|40
+Cereales y derivados|Yuca (mandioca) cocida|33|55
+Cereales y derivados|Soja hervida|100|15
+Cereales y derivados|Harina de maíz|15|70
+Cereales y derivados|Cereales de desayuno|15|77
+Cereales y derivados|Galleta María|15|70
+Cereales y derivados|Hummus|100|
+Frutas|Aguacate (palta)|160|10
+Frutas|Albaricoque|150|30
+Frutas|Arándano|100|25
+Frutas|Cereza|100|25
+Frutas|Chirimoya|50|35
+Frutas|Ciruela|100|35
+Frutas|Coco fresco|65|45
+Frutas|Dátil|15|70
+Frutas|Frambuesa|150|25
+Frutas|Fresas (frutillas)|200|25
+Frutas|Granada|70|35
+Frutas|Higos|100|35
+Frutas|Kiwi|100|50
+Frutas|Mandarina|100|30
+Frutas|Mango|100|50
+Frutas|Manzana|100|35
+Frutas|Melocotón (durazno)|100|35
+Frutas|Melón|200|60
+Frutas|Mora|150|25
+Frutas|Naranja|100|35
+Frutas|Nectarina|100|35
+Frutas|Pera|100|30
+Frutas|Papaya (mamón)|125|55
+Frutas|Piña|100|45
+Frutas|Plátano (banana)|50|50
+Frutas|Sandía|200|75
+Frutas|Uva|50|45
+Hortalizas|Acelga|300|15
+Hortalizas|Alcachofa|300|20
+Hortalizas|Apio|500|15
+Hortalizas|Berenjena|300|20
+Hortalizas|Brócoli|300|15
+Hortalizas|Calabacín (zapallito)|300|15
+Hortalizas|Calabaza (zapallo)|200|75
+Hortalizas|Cebolla|150|15
+Hortalizas|Coliflor|300|15
+Hortalizas|Espárrago verde|500|15
+Hortalizas|Espinaca||15
+Hortalizas|Judía verde (chaucha)|250|30
+Hortalizas|Lechuga|300|15
+Hortalizas|Pepino|300|15
+Hortalizas|Pimiento|300|15
+Hortalizas|Puerro|300|15
+Hortalizas|Remolacha|150|30
+Hortalizas|Repollo|300|15
+Hortalizas|Setas y champiñón|300|15
+Hortalizas|Tomate|300|30
+Hortalizas|Zanahoria cruda|150|30
+Hortalizas|Zanahoria hervida|200|85
+Hortalizas|Guisantes (arvejas)|100|35
+Frutos secos|Aceituna|250|15
+Frutos secos|Almendra|150|15
+Frutos secos|Avellana|150|15
+Frutos secos|Cacahuete (maní)|100|15
+Frutos secos|Nuez|300|15
+Frutos secos|Pistacho|80|15
+Frutos secos|Pipas de girasol|80|35
+Frutos secos|Uva pasa|15|65
+Frutos secos|Higo seco|15|40
+Frutos secos|Ciruela pasa|15|40
+Frutos secos|Dátil seco|15|70
+Bebidas y otros|Bebida de soja|250|30
+Bebidas y otros|Bebida de almendra|200|35
+Bebidas y otros|Bebida de avena|200|35
+Bebidas y otros|Bebida de arroz|200|85
+Bebidas y otros|Zumo de fruta natural o comercial|100|60
+Bebidas y otros|Zumo de fruta sin azúcar añadido|200|45
+Bebidas y otros|Zumo de tomate|200|35
+Bebidas y otros|Cerveza|250|110
+Bebidas y otros|Refresco tipo cola|100|70
+Bebidas y otros|Chocolate negro|25|20
+Bebidas y otros|Chocolate con leche|17|70
+Bebidas y otros|Miel|13|85
+Bebidas y otros|Azúcar blanco|10|70
+Bebidas y otros|Mermelada|20|65
+Bebidas y otros|Crema de cacahuete|100|40
+Bebidas y otros|Pizza|40|45
+Bebidas y otros|Lasaña|100|53
+Bebidas y otros|Palomitas|20|85
+Bebidas y otros|Donut|23|70
+Bebidas y otros|Cacao en polvo sin azúcar|22|`;
+export const TABLA_HC=TH.split('\n').map(l=>{const [g,n,r,ig]=l.split('|');return {g,n,r:r===''?null:+r,ig:ig===''?null:+ig};});
+export const FUENTE_IG='Fuente: Tabla de raciones de hidratos de carbono, Fundación para la Salud (Novo Nordisk España), basada en CESNID, BEDCA y tablas internacionales de IG (Atkinson 2021). 1 ración de HC = 10 g de hidratos de carbono. IG bajo: 55 o menos; moderado: 56 a 69; alto: 70 o más. Transcripción parcial: verifica con el documento original.';
 export const MAR=new Set(['salmon','merluza']);
 export const CARO=new Set(['nueces','almendras','chia','palta']);
 const PESC=new Set(['atun','salmon','merluza','surubi','tilapia']);
 export const SECCIONES={carnes:'Carnes y vísceras',pescados:'Pescados',huevos:'Huevos',lacteos:'Lácteos',verduras:'Verduras',frutas:'Frutas',despensa:'Despensa',condimentos:'Condimentos',otros:'Otros'};
 export function seccion(a){if(!a)return 'otros';if(a.id==='huevo')return 'huevos';if(PESC.has(a.id))return 'pescados';return {proteina:'carnes',lacteo:'lacteos',verdura:'verduras',fruta:'frutas'}[a.cat]||'despensa';}
-export const ALIMENTOS=A.map(([id,n,cat,kcal,p,c,fi,g])=>({id,n,cat,kcal,p,c,fi,g,base:true}));
+
+// Índice glucémico (IG) por alimento, de la "Tabla de raciones de hidratos de carbono" (Fundación para la Salud / Novo Nordisk España).
+// Donde el alimento exacto no figura se usa el más parecido: porotos≈judías blancas, choclo≈maíz en lata, ricota≈queso fresco,
+// zapallo≈calabaza, mandioca≈yuca, mamón≈papaya, frutilla≈fresas, batata≈boniato, papa≈patata hervida.
+export const IG={arroz:70,arrozint:50,avena:40,mandioca:55,batata:50,fideos:50,pastaint:45,quinoa:35,papa:65,choclo:65,hmaiz:70,pan:40,lentejas:35,porotos:35,garbanzos:35,arveja:35,banana:50,manzana:35,frutilla:25,naranja:35,melon:60,mamon:55,palta:10,zanahoria:30,tomate:30,brocoli:15,espinaca:15,acelga:15,berenjena:20,zapallito:15,zapallo:75,repollo:15,lechuga:15,pepino:15,pimiento:15,cebolla:15,coliflor:15,remolacha:30,chaucha:30,almendras:15,nueces:15,mani:15,leche:27,yogur:35,ricota:35};
+export const nivelIG=g=>g==null?'':g<=55?'bajo':g<70?'moderado':'alto';
+export const ALIMENTOS=A.map(([id,n,cat,kcal,p,c,fi,g])=>({id,n,cat,kcal,p,c,fi,g,ig:IG[id]??null,base:true}));
 const R=(id,n,tags,por,t,ing,pasos)=>({id,n,tags,por,t,ing,pasos,base:true});
 export const RECETAS=[
 R('r1','Omelette de espinaca y queso',['desayuno'],1,10,[['huevo',150],['espinaca',50],['mozzarella',30],['aceite',5]],['Bate los huevos con una pizca de sal.','Saltea la espinaca 1 minuto en una sartén con el aceite.','Agrega los huevos y el queso, cocina a fuego medio y dobla.']),
@@ -151,5 +291,7 @@ R('r72','Porotos con carne y verduras',['almuerzo'],1,40,[['porotos',200],['carn
 R('r73','Berenjena rellena de carne molida',['almuerzo','cena'],1,40,[['berenjena',200],['molida',120],['tomate',60],['mozzarella',30]],['Abre las berenjenas cocidas y retira parte de la pulpa.','Mezcla la pulpa con carne molida cocida y tomate, rellena, cubre con queso y gratina 10 minutos.']),
 R('r74','Arvejas con pollo',['almuerzo','cena'],1,25,[['arveja',150],['pollo',150],['zanahoria',50],['aceite',8]],['Saltea el pollo en cubos.','Agrega las arvejas y la zanahoria y cocina 8 minutos.']),
 R('r75','Ensalada de chauchas, remolacha y atún',['almuerzo','cena'],1,15,[['chaucha',100],['remolacha',80],['atun',100],['lechuga',60],['aceite',8]],['Mezcla las verduras cocidas con el atún y la lechuga.','Alíña con el aceite.']),
-R('r76','Garbanzos con pollo y espinaca',['almuerzo','cena'],1,25,[['garbanzos',150],['pollo',150],['espinaca',80],['aceite',8]],['Saltea el pollo en cubos.','Agrega los garbanzos y la espinaca y cocina 5 minutos.'])
+R('r76','Garbanzos con pollo y espinaca',['almuerzo','cena'],1,25,[['garbanzos',150],['pollo',150],['espinaca',80],['aceite',8]],['Saltea el pollo en cubos.','Agrega los garbanzos y la espinaca y cocina 5 minutos.']),
+R('r77','Pollo con arroz integral y verduras',['almuerzo','cena'],1,35,[['pollo',150],['arrozint',150],['zanahoria',60],['brocoli',80],['aceite',8]],['Cocina el pollo en cubos con el aceite.','Agrega las verduras picadas y el arroz integral cocido y mezcla.']),
+R('r78','Fideos integrales con carne molida y tomate',['almuerzo','cena'],1,30,[['pastaint',150],['molida',100],['tomate',120],['cebolla',40],['aceite',6]],['Sofríe la cebolla y la carne molida; agrega el tomate picado y cocina 10 minutos.','Mezcla con la pasta integral cocida.'])
 ];

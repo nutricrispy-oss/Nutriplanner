@@ -33,15 +33,17 @@ function editarPerfil(){
 function config(){
   vista.innerHTML=`<div class="card"><h2>Apariencia</h2><div class="seg"><button class="btn ${ajustes.tema==='claro'?'':'sec'}" data-t="claro">Claro</button><button class="btn ${ajustes.tema==='oscuro'?'':'sec'}" data-t="oscuro">Oscuro</button></div>
    <label for="nom">Nombre de la app</label><input id="nom" value="${esc(ajustes.nombreApp)}" maxlength="30"></div>
-  <div class="card"><h2>Menús</h2><label class="chk"><input type="checkbox" id="mar" ${ajustes.incluirMar?'checked':''}>Incluir pescados de mar costosos (salmón, merluza)</label><p class="mut">Por defecto se evitan en Paraguay; los pescados de río y la tilapia sí se incluyen.</p></div>
+  <div class="card"><h2>Menús</h2><label class="chk"><input type="checkbox" id="igb" ${ajustes.igBajo!==false?'checked':''}>Priorizar alimentos de índice glucémico (IG) bajo</label>
+  <label class="chk"><input type="checkbox" id="mar" ${ajustes.incluirMar?'checked':''}>Incluir pescados de mar costosos (salmón, merluza)</label><p class="mut">Por defecto se evitan en Paraguay; los pescados de río y la tilapia sí se incluyen.</p></div>
   <div id="seg"></div><div id="resp"></div>
   <div id="hab"></div>
   <div class="card"><h2>Perfil</h2><button class="btn sec blk" id="ep">${perfil?'Editar mi perfil':'Crear mi perfil'}</button></div>
   <div class="card"><h2>Aplicación</h2><button class="btn sec blk" id="inst" ${instalar?'':'hidden'}>Instalar en pantalla de inicio</button>
-   <p class="mut" id="est">Versión 0.5 (Fase 5). Funciona sin conexión.</p></div>
+   <p class="mut" id="est">Versión 0.7. Funciona sin conexión.</p></div>
   <div class="card"><h2>Privacidad</h2><p class="mut">Tus datos se guardan solo en este dispositivo y no se envían a ningún servidor. Pueden perderse si borras los datos del navegador o desinstalas la app; la copia de seguridad llegará en la Fase 5. Esta app no sustituye a un médico o nutricionista.</p></div>`;
   vista.querySelectorAll('[data-t]').forEach(b=>b.onclick=async()=>{ajustes.tema=b.dataset.t;aplicarAjustes();await guardarAjustes();config();});
   $('#nom').onchange=async e=>{ajustes.nombreApp=e.target.value.trim()||'NutriPlanner';aplicarAjustes();await guardarAjustes();};
+  $('#igb').onchange=async e=>{ajustes.igBajo=e.target.checked;ctx.igBajo=ajustes.igBajo;await guardarAjustes();};
   $('#mar').onchange=async e=>{ajustes.incluirMar=e.target.checked;ctx.incluirMar=ajustes.incluirMar;await guardarAjustes();};
   pinCard($('#seg'),()=>{config();mostrarBoton();});respaldoCard($('#resp'),ajustes,guardarAjustes);
   habitosForm($('#hab'),perfil,async np=>{perfil=np;perfil.actualizado=new Date().toISOString();await guardar('perfil','principal',perfil);await cargar(perfil);config();});
@@ -83,7 +85,7 @@ addEventListener('bloquear-ahora',bloquear);
 let oculta=0;
 document.addEventListener('visibilitychange',()=>{if(document.hidden)oculta=Date.now();else if(oculta&&Date.now()-oculta>60000)bloquear();});
 (async()=>{
-  try{ajustes=Object.assign(ajustes,await leer('ajustes','general')||{});ctx.incluirMar=!!ajustes.incluirMar;perfil=await leer('perfil','principal')||null;await cargar(perfil);pedirPersistencia();}
+  try{ajustes=Object.assign(ajustes,await leer('ajustes','general')||{});ctx.incluirMar=!!ajustes.incluirMar;ctx.igBajo=ajustes.igBajo!==false;perfil=await leer('perfil','principal')||null;await cargar(perfil);pedirPersistencia();}
   catch(e){vista.innerHTML='<div class="card"><h2>No se pudo abrir el almacenamiento</h2><p class="err">Revisa que el navegador permita guardar datos en este sitio.</p></div>';}
   aplicarAjustes();conexion();sw();
   try{const reg=await hayPin();if(reg){document.body.classList.add('bloqueada');await bloquear();}}catch(e){}

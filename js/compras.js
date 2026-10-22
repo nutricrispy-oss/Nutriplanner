@@ -2,6 +2,9 @@ import {leer,guardar,borrar,todo} from './db.js';
 import {ctx,modal,ops} from './vistas.js';
 import {r1,esc} from './nutricion.js';
 import {seccion,SECCIONES} from './datos.js';
+import {nivelIG,altIGBajo} from './menu.js';
+const igChip=id=>{const a=ctx.mapa[id];return a&&a.ig!=null?` <small class="ig ${nivelIG(a.ig)}">IG ${a.ig}</small>`:'';};
+const altTxt=id=>{const x=altIGBajo(id,ctx);return x?`<br>IG alto. Alternativa de IG más bajo: ${esc(x.n)} (IG ${x.ig})`:'';};
 let est=null,pest='lista';
 export function necesidades(semana,porId,soloPend=false){
   const m={};if(!semana)return m;
@@ -51,7 +54,7 @@ async function lista(sub){
   await cargarEst();const inv=(await leer('despensa','inv'))||{},precios=(await leer('compras','precios'))||{};ctx.despensa=inv;
   const items=armarLista(inv,precios,ctx.semana,ctx.porId,ctx.mapa,est),vis=items.filter(i=>!est.quitados[i.id]);
   const total=vis.reduce((s,i)=>s+(i.costo||0),0),sinP=vis.filter(i=>i.sinPrecio).length,nq=Object.keys(est.quitados).length;
-  const fila=i=>`<div class="item ${est.comprados[i.id]||i.falta===0?'ok':''}"><label class="chk"><input type="checkbox" data-co="${i.id}" ${est.comprados[i.id]?'checked':''}><span>${esc(i.n)}</span></label><div class="q">${i.falta>0?fmt(i.falta,i.id):'Ya lo tienes'}${i.costo?` · ${gs(i.costo)}`:''}</div><div class="acc no-print"><button class="btn sec mini" data-pr="${i.id}">Precio</button>${i.falta>0?`<button class="btn sec mini" data-ya="${i.id}">Ya tengo</button>`:''}<button class="btn sec mini" data-qt="${i.id}" aria-label="Quitar ${esc(i.n)}">Quitar</button></div></div>`;
+  const fila=i=>`<div class="item ${est.comprados[i.id]||i.falta===0?'ok':''}"><label class="chk"><input type="checkbox" data-co="${i.id}" ${est.comprados[i.id]?'checked':''}><span>${esc(i.n)}${igChip(i.id)}</span></label><div class="q">${i.falta>0?fmt(i.falta,i.id):'Ya lo tienes'}${i.costo?` · ${gs(i.costo)}`:''}${i.falta>0?altTxt(i.id):''}</div><div class="acc no-print"><button class="btn sec mini" data-pr="${i.id}">Precio</button>${i.falta>0?`<button class="btn sec mini" data-ya="${i.id}">Ya tengo</button>`:''}<button class="btn sec mini" data-qt="${i.id}" aria-label="Quitar ${esc(i.n)}">Quitar</button></div></div>`;
   sub.innerHTML=`<h2 class="solo-print">Lista de compras · semana del ${fmtF(ctx.semana.lunes)}</h2>
   <div class="card no-print"><div class="dos"><div><label for="np">Personas</label><input id="np" type="number" inputmode="numeric" min="1" max="20" value="${est.personas}"></div><div><label class="chk" style="margin-top:36px"><input type="checkbox" id="sp" ${est.soloPend?'checked':''}>Solo comidas pendientes</label></div></div></div>
   <div class="card"><h2>Costo estimado</h2><p><b>${total?gs(total):'Sin precios registrados'}</b></p><p class="mut">${sinP?`${sinP} producto(s) sin precio. Toca "Precio" para cargarlo (Gs. por kg o litro).`:'Calculado con los precios que registraste.'} Se descuenta lo que tienes en la despensa.</p></div>

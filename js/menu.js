@@ -1,5 +1,6 @@
 import {calc,escala} from './nutricion.js';
-import {MAR,CARO} from './datos.js';
+import {MAR,CARO,nivelIG} from './datos.js';
+export {nivelIG};
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 export const DIAS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 export const SLOTS={desayuno:'Desayuno',mediamanana:'Media mañana',almuerzo:'Almuerzo',merienda:'Merienda',cena:'Cena'};
@@ -12,6 +13,21 @@ export function excluida(r,p,mapa){
   const bad=malos(p);if(!bad.length)return false;
   return bad.some(b=>norm(r.n).includes(b)||r.ing.some(([id])=>norm(mapa[id]?.n).includes(b)));
 }
+export function igItems(items,mapa){
+  let n=0,d=0;
+  for(const [id,g] of items){const a=mapa[id];if(!a||a.ig==null)continue;const ch=Math.max(0,(a.c-(a.fi||0)))*g/100;n+=a.ig*ch;d+=ch;}
+  return d>=3?{ig:n/d,ch:d}:null;
+}
+const escalados=(m,r)=>(m.ing||r.ing).map(([id,g])=>[id,g*m.factor/r.por]);
+export function igMeal(m,ctx){const r=ctx.porId[m.rid];return r?igItems(escalados(m,r),ctx.mapa):null;}
+export function igDia(comidas,ctx){const it=[];for(const m of Object.values(comidas)){const r=ctx.porId[m.rid];if(r)it.push(...escalados(m,r));}return igItems(it,ctx.mapa);}
+export const igReceta=(r,ctx)=>igItems(r.ing.map(([id,g])=>[id,g/r.por]),ctx.mapa);
+const GR={verdura:'veg',proteina:'prot',lacteo:'prot',cereal:'carb',legumbre:'carb',fruta:'carb',grasa:'fat'};
+export function platoMeal(m,ctx){
+  const r=ctx.porId[m.rid],t={veg:0,prot:0,carb:0,fat:0};if(!r)return t;
+  for(const [id,g] of escalados(m,r)){const k=GR[ctx.mapa[id]?.cat];if(k)t[k]+=g;}
+  return t;
+}
 export const nutPorcion=(r,ctx)=>escala(calc(r.ing,ctx.mapa),1/r.por);
 export function nutMeal(m,ctx){const r=ctx.porId[m.rid];if(!r)return calc([],ctx.mapa);return escala(calc(m.ing||r.ing,ctx.mapa),m.factor/r.por);}
 export function totalDia(dia,ctx,soloHechas=false){
@@ -19,14 +35,19 @@ export function totalDia(dia,ctx,soloHechas=false){
   for(const m of Object.values(dia.comidas)){if(soloHechas&&!m.hecha)continue;const n=nutMeal(m,ctx);for(const k in t)t[k]+=n[k];}
   return t;
 }
+function esAltoIG(r,ctx){
+  if(ctx.igBajo===false)return false;
+  const g=igReceta(r,ctx);return !!g&&g.ig>=70&&nutPorcion(r,ctx).cn>=15;
+}
 export function candidatos(slot,ctx){
   const tipo=tipoDe(slot),bajo=ctx.perfil.enfoque==='Bajo en carbohidratos',sinMar=/paragu/i.test(ctx.perfil.pais||'')&&!ctx.incluirMar;
-  return ctx.recetas.filter(r=>r.tags.includes(tipo)&&!(sinMar&&r.ing.some(([id])=>MAR.has(id)))&&!excluida(r,ctx.perfil,ctx.mapa)&&(!bajo||nutPorcion(r,ctx).cn<=(tipo==='colacion'?15:22)));
+  return ctx.recetas.filter(r=>r.tags.includes(tipo)&&!(sinMar&&r.ing.some(([id])=>MAR.has(id)))&&!esAltoIG(r,ctx)&&!excluida(r,ctx.perfil,ctx.mapa)&&(!bajo||nutPorcion(r,ctx).cn<=(tipo==='colacion'?15:22)));
 }
 function puntaje(r,ctx,usados){
   let s=Math.random();
   if(ctx.favs.includes(r.id))s+=1;
   s-=2*(usados[r.id]||0);
+  if(ctx.igBajo!==false){const g=igReceta(r,ctx);if(g)s+=(55-g.ig)/80;}
   if(r.ing.some(([id])=>CARO.has(id)))s-=.7;
   const dp=ctx.despensa||{};s+=.25*r.ing.filter(([id])=>dp[id]&&dp[id].g>0).length;
   const cu=(ctx.perfil.cuesta||[]).map(norm).filter(Boolean);
@@ -51,6 +72,8 @@ export function errorDia(comidas,ctx){
   let e=rel(t.kcal,p.kcal,1.2)+rel(t.p,p.prot,1)+rel(t.c,p.carb,.8)+rel(t.g,p.grasa,.6);
   const fo=+p.fibra||25;if(t.fi<fo)e+=1.8*(fo-t.fi)/fo;else if(t.fi>45)e+=.5*(t.fi-45)/fo;
   if(+p.prot&&t.p>1.4*p.prot)e+=1.0*(t.p-1.4*p.prot)/p.prot;
+  if(ctx.igBajo!==false){const g=igDia(comidas,ctx);if(g&&g.ig>55)e+=1.0*(g.ig-55)/55;}
+  for(const s of ['almuerzo','cena']){const m=comidas[s];if(!m)continue;const v=platoMeal(m,ctx).veg;if(v<150)e+=.15*(150-v)/150;}
   return e;
 }
 export function balancear(comidas,ctx){
@@ -88,6 +111,20 @@ export function sustitutos(id,g,ctx){
   const a=ctx.mapa[id];if(!a)return[];
   const base=calc([[id,g]],ctx.mapa),bad=malos(ctx.perfil);
   return Object.values(ctx.mapa).filter(x=>x.id!==id&&x.cat===a.cat&&!bad.some(b=>norm(x.n).includes(b)))
-   .map(x=>{const t=calc([[x.id,g]],ctx.mapa);return {id:x.id,n:x.n,d:{kcal:t.kcal-base.kcal,p:t.p-base.p,c:t.c-base.c}};})
-   .sort((u,v)=>Math.abs(u.d.kcal)-Math.abs(v.d.kcal)).slice(0,6);
+   .map(x=>{const t=calc([[x.id,g]],ctx.mapa);return {id:x.id,n:x.n,ig:x.ig??null,d:{kcal:t.kcal-base.kcal,p:t.p-base.p,c:t.c-base.c}};})
+   .sort((u,v)=>{const w=x=>(a.ig!=null&&x.ig!=null&&x.ig>a.ig)?1:0;return w(u)-w(v)||Math.abs(u.d.kcal)-Math.abs(v.d.kcal);}).slice(0,6);
+}
+export function coincidencia(r,disp,aceite=true){
+  const ids=[...new Set(r.ing.map(([id])=>id))],tiene=[],falta=[];
+  for(const id of ids)((disp.has(id)||(aceite&&id==='aceite'))?tiene:falta).push(id);
+  return {tiene,falta,usados:tiene.filter(id=>disp.has(id)).length,pct:tiene.length/ids.length};
+}
+
+export function altIGBajo(id,ctx){
+  const a=ctx.mapa[id];if(!a||a.ig==null||a.ig<70)return null;
+  const bad=malos(ctx.perfil);
+  const c=Object.values(ctx.mapa).filter(x=>x.id!==id&&x.cat===a.cat&&x.ig!=null&&x.ig<=55&&!bad.some(b=>norm(x.n).includes(b)));
+  if(!c.length)return null;
+  c.sort((u,v)=>Math.abs(u.kcal-a.kcal)-Math.abs(v.kcal-a.kcal));
+  return {n:c[0].n,ig:c[0].ig};
 }

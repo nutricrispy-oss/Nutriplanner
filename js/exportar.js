@@ -31,9 +31,9 @@ async function htmlCompacto(conLista){
   const s=ctx.semana,p=ctx.perfil,cols=Object.keys(M.SLOTS).filter(k=>s.dias.some(d=>d.comidas[k]));
   let h=`<h1>Menú semanal</h1><p class="sub">${p.nombre?esc(p.nombre)+' · ':''}Semana del ${fF(s.lunes)} al ${fF(sumar(s.lunes,6))} · Generado el ${fF(M.fechaISO())}</p>`;
   h+=`<table class="tc"><thead><tr><th>Día</th>${cols.map(k=>`<th>${M.SLOTS[k]}</th>`).join('')}<th>Total del día</th></tr></thead><tbody>`;
-  s.dias.forEach((d,i)=>{const t=M.totalDia(d,ctx);
+  s.dias.forEach((d,i)=>{const t=M.totalDia(d,ctx),ig=M.igDia(d.comidas,ctx);
     h+=`<tr><td><b>${M.DIAS[i]}</b><br><small>${fF(sumar(s.lunes,i)).slice(0,5)}</small></td>${cols.map(k=>{const m=d.comidas[k],r=m&&ctx.porId[m.rid];if(!r)return '<td>—</td>';const n=M.nutMeal(m,ctx);
-      return `<td>${esc(r.n)}${m.factor!==1?` (${m.factor} porc.)`:''}<br><small>${Math.round(n.kcal)} kcal · P${Math.round(n.p)} C${Math.round(n.c)} G${Math.round(n.g)}</small></td>`;}).join('')}<td><b>${Math.round(t.kcal)} kcal</b><br><small>P${Math.round(t.p)} C${Math.round(t.c)} G${Math.round(t.g)}<br>Fibra ${Math.round(t.fi)}</small></td></tr>`;});
+      return `<td>${esc(r.n)}${m.factor!==1?` (${m.factor} porc.)`:''}<br><small>${Math.round(n.kcal)} kcal · P${Math.round(n.p)} C${Math.round(n.c)} G${Math.round(n.g)}</small></td>`;}).join('')}<td><b>${Math.round(t.kcal)} kcal</b><br><small>P${Math.round(t.p)} C${Math.round(t.c)} G${Math.round(t.g)}<br>Fibra ${Math.round(t.fi)}${ig?' · IG '+Math.round(ig.ig):''}</small></td></tr>`;});
   h+='</tbody></table>';
   if(conLista){const {items,est}=await listaItems();
     h+=`<h2>Lista de compras</h2><div class="cols">`+Object.keys(SECCIONES).map(k=>{const L=items.filter(i=>i.sec===k),Mn=est.manuales.filter(m=>m.sec===k);if(!L.length&&!Mn.length)return '';

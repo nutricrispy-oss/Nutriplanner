@@ -1,5 +1,5 @@
 import {leer,guardar,borrar,todo} from './db.js';
-import {ALIMENTOS,RECETAS,FUENTE} from './datos.js';
+import {ALIMENTOS,RECETAS,FUENTE,TABLA_HC,FUENTE_IG} from './datos.js';
 import {calc,escala,r1,esc,linea} from './nutricion.js';
 import * as M from './menu.js';
 import {historialView} from './historial.js';
@@ -66,12 +66,13 @@ async function menuSemana(c){
   if(!ctx.perfil)return sinPerfil(c);
   c.onclick=e=>acciones(e,c);
   if(!ctx.semana){c.innerHTML=`<div class="card"><h2>Tu menú semanal</h2><p class="mut">Genera una semana según tus objetivos y preferencias. Después puedes cambiar cualquier comida.</p><button class="btn blk" data-act="gen">Generar menú semanal</button><button class="btn sec blk" data-act="copiar" style="margin-top:10px">Copiar semana anterior</button></div>`;return;}
-  const dia=ctx.semana.dias[sel],{t:cons}=await consumido(fechaDia(sel),dia),plan=M.totalDia(dia,ctx);
+  const dia=ctx.semana.dias[sel],{t:cons}=await consumido(fechaDia(sel),dia),plan=M.totalDia(dia,ctx),igd=M.igDia(dia.comidas,ctx);
   const slots=Object.keys(M.SLOTS).filter(s=>dia.comidas[s]);
   c.innerHTML=`<div class="dias">${M.DIAS.map((d,i)=>`<button class="${i===sel?'on':''}" data-act="dia" data-i="${i}" ${i===sel?'aria-current="true"':''}>${d}</button>`).join('')}</div>
-  <div class="card"><h2>${M.DIAS[sel]} ${fechaDia(sel).slice(8)}/${fechaDia(sel).slice(5,7)}</h2><p class="mut">Planificado: ${Math.round(plan.kcal)} kcal · P ${r1(plan.p)} g · C neto ${r1(plan.cn)} g · Fibra ${r1(plan.fi)} g</p><p class="mut">Reparto de calorías: P ${pc(plan.p*4,plan.kcal)}% · C ${pc(plan.c*4,plan.kcal)}% · G ${pc(plan.g*9,plan.kcal)}%</p>${barras(cons)}<p class="mut">Barras: lo realmente consumido (comidas hechas + extras).</p></div>
-  ${slots.map((s,ix)=>{const m=dia.comidas[s],r=ctx.porId[m.rid],n=M.nutMeal(m,ctx);return `<div class="card meal ${m.hecha?'hecha':''}"><div class="mh"><b>${M.SLOTS[s]}</b><span class="mut">${H.horaSugerida(ctx.perfil,ix,slots.length)?'≈ '+H.horaSugerida(ctx.perfil,ix,slots.length)+' · ':''}${r.t} min</span></div><h3>${esc(r.n)}</h3><p class="mut">${m.factor} porc. · ${linea(n)}</p><div class="fila"><button class="btn ${m.hecha?'sec':''} mini" data-act="hecha" data-s="${s}">${m.hecha?'Desmarcar':'Marcar hecha'}</button><button class="btn sec mini" data-act="cambiar" data-s="${s}">Cambiar</button><button class="btn sec mini" data-act="editar" data-s="${s}">Ver / editar</button></div></div>`;}).join('')||'<div class="card"><p class="mut">No hay recetas compatibles con tus restricciones. Agrega una propia en Recetas.</p></div>'}
+  <div class="card"><h2>${M.DIAS[sel]} ${fechaDia(sel).slice(8)}/${fechaDia(sel).slice(5,7)}</h2><p class="mut">Planificado: ${Math.round(plan.kcal)} kcal · P ${r1(plan.p)} g · C neto ${r1(plan.cn)} g · Fibra ${r1(plan.fi)} g</p><p class="mut">Reparto de calorías: P ${pc(plan.p*4,plan.kcal)}% · C ${pc(plan.c*4,plan.kcal)}% · G ${pc(plan.g*9,plan.kcal)}%</p><p class="mut">Raciones de HC: ${r1(plan.cn/10)}${igd?` · IG medio del día ≈ ${Math.round(igd.ig)} <span class="ig ${M.nivelIG(igd.ig)}">${M.nivelIG(igd.ig)}</span>`:''}</p>${barras(cons)}<p class="mut">Barras: lo realmente consumido (comidas hechas + extras).</p></div>
+  ${slots.map((s,ix)=>{const m=dia.comidas[s],r=ctx.porId[m.rid],n=M.nutMeal(m,ctx),ig=M.igMeal(m,ctx);return `<div class="card meal ${m.hecha?'hecha':''}"><div class="mh"><b>${M.SLOTS[s]}</b><span class="mut">${H.horaSugerida(ctx.perfil,ix,slots.length)?'≈ '+H.horaSugerida(ctx.perfil,ix,slots.length)+' · ':''}${r.t} min</span></div><h3>${esc(r.n)}</h3><p class="mut">${m.factor} porc. · ${linea(n)} · ${r1(n.cn/10)} raciones de HC${ig?` <span class="ig ${M.nivelIG(ig.ig)}">IG ${Math.round(ig.ig)} ${M.nivelIG(ig.ig)}</span>`:''}</p><div class="fila"><button class="btn ${m.hecha?'sec':''} mini" data-act="hecha" data-s="${s}">${m.hecha?'Desmarcar':'Marcar hecha'}</button><button class="btn sec mini" data-act="cambiar" data-s="${s}">Cambiar</button><button class="btn sec mini" data-act="editar" data-s="${s}">Ver / editar</button></div></div>`;}).join('')||'<div class="card"><p class="mut">No hay recetas compatibles con tus restricciones. Agrega una propia en Recetas.</p></div>'}
   <div class="fila"><button class="btn sec" data-act="genDia">Regenerar este día</button><button class="btn sec" data-act="gen">Semana nueva</button></div>
+  <button class="btn sec blk" data-act="plato" style="margin-top:10px">Modelo del plato e índice glucémico</button>
   <button class="btn sec blk" data-act="bal" style="margin-top:10px">Balancear porciones del día</button>
   <button class="btn sec blk" data-act="copiar" style="margin-top:10px">Copiar semana anterior</button>
   <div class="card"><h2>Exportar</h2><label class="chk"><input type="checkbox" id="inclLista">Incluir lista de compras</label><div class="fila"><button class="btn mini" data-act="pdf">Guardar PDF</button><button class="btn sec mini" data-act="imp">Imprimir</button><button class="btn sec mini" data-act="comp">Compartir</button></div></div>`;
@@ -90,6 +91,7 @@ async function acciones(e,c){
     await guardarSemana();return menuSemana(c);
   }
   if(a==='hecha'){const m=ctx.semana.dias[sel].comidas[s];m.hecha=!m.hecha;await guardarSemana();return menuSemana(c);}
+  if(a==='plato')return modeloPlato();
   if(a==='bal'){M.balancear(ctx.semana.dias[sel].comidas,ctx);await guardarSemana();return menuSemana(c);}
   if(a==='pdf'||a==='imp'||a==='comp'){const x=await import('./exportar.js');return x.exportarMenu(a,!!c.querySelector('#inclLista')?.checked,!!c.querySelector('#detPdf')?.checked);}
   if(a==='cambiar')return cambiar(s,c);
@@ -114,12 +116,12 @@ function editar(s,c){
   const draw=()=>{h.innerHTML=`<h2>${esc(r.n)}</h2><p class="mut">${r.t} min · receta para ${r.por} porc.</p>
   <label for="ef">Porciones que comerás</label><input id="ef" type="number" inputmode="decimal" step="0.25" min="0.25" max="6" value="${factor}">
   <h3>Ingredientes (g o ml de la receta completa)</h3>${ing.map(([id,g],i)=>{const n=esc(ctx.mapa[id]?.n||id);return `<div class="ing"><span>${n}</span><input type="number" inputmode="decimal" min="1" max="5000" data-g="${i}" value="${g}" aria-label="Cantidad de ${n}"><button class="btn sec mini" data-sub="${i}">Cambiar</button></div>`;}).join('')}
-  <div class="nota" id="tot">${tot()}</div><h3>Preparación</h3><ol>${r.pasos.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${msg?`<p class="err" role="alert">${esc(msg)}</p>`:''}<div class="fila"><button class="btn sec" data-x>Cancelar</button><button class="btn" data-ok>Guardar cambios</button></div>`;};
-  h.oninput=e=>{const t=e.target;if(t.dataset.g!==undefined)ing[+t.dataset.g][1]=+t.value;else if(t.id==='ef')factor=+t.value;h.querySelector('#tot').textContent=tot();};
+  <div class="nota" id="tot">${tot()}</div><div id="pl">${platoHtml(ing,factor,r)}</div><h3>Preparación</h3><ol>${r.pasos.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>${msg?`<p class="err" role="alert">${esc(msg)}</p>`:''}<div class="fila"><button class="btn sec" data-x>Cancelar</button><button class="btn" data-ok>Guardar cambios</button></div>`;};
+  h.oninput=e=>{const t=e.target;if(t.dataset.g!==undefined)ing[+t.dataset.g][1]=+t.value;else if(t.id==='ef')factor=+t.value;h.querySelector('#tot').textContent=tot();h.querySelector('#pl').innerHTML=platoHtml(ing,factor,r);};
   h.onclick=async e=>{
     const sb=e.target.closest('[data-sub]'),pk=e.target.closest('[data-new]');
     if(sb){const i=+sb.dataset.sub,o=M.sustitutos(ing[i][0],ing[i][1],ctx);
-      h.innerHTML=`<h2>Cambiar ${esc(ctx.mapa[ing[i][0]]?.n)}</h2><p class="mut">Cambio nutricional con la misma cantidad (${ing[i][1]} g):</p>${o.map(x=>`<div class="card"><b>${esc(x.n)}</b><p class="mut">${sg(x.d.kcal)} kcal · P ${sg(x.d.p)} g · C ${sg(x.d.c)} g</p><button class="btn blk" data-new="${i}:${x.id}">Usar este</button></div>`).join('')||'<p class="mut">No hay sustitutos compatibles.</p>'}<button class="btn sec blk" data-back>Volver</button>`;return;}
+      h.innerHTML=`<h2>Cambiar ${esc(ctx.mapa[ing[i][0]]?.n)}</h2><p class="mut">Cambio nutricional con la misma cantidad (${ing[i][1]} g):</p>${o.map(x=>`<div class="card"><b>${esc(x.n)}</b><p class="mut">${sg(x.d.kcal)} kcal · P ${sg(x.d.p)} g · C ${sg(x.d.c)} g${x.ig!=null?` · IG ${x.ig} (${M.nivelIG(x.ig)})`:''}</p><button class="btn blk" data-new="${i}:${x.id}">Usar este</button></div>`).join('')||'<p class="mut">No hay sustitutos compatibles.</p>'}<button class="btn sec blk" data-back>Volver</button>`;return;}
     if(pk){const [i,id]=pk.dataset.new.split(':');ing[+i][0]=id;return draw();}
     if(e.target.closest('[data-back]'))return draw();
     if(e.target.closest('[data-ok]')){
@@ -136,10 +138,10 @@ function editar(s,c){
 let pest='recetas';
 export async function recetasView(c){
   if(!ctx.perfil)return sinPerfil(c);
-  c.innerHTML=`<div class="seg"><button class="btn ${pest==='recetas'?'':'sec'}" data-tab="recetas">Recetas</button><button class="btn ${pest==='calc'?'':'sec'}" data-tab="calc">Calculadora</button></div><div id="sub"></div>`;
+  c.innerHTML=`<div class="seg"><button class="btn ${pest==='recetas'?'':'sec'}" data-tab="recetas">Recetas</button><button class="btn ${pest==='calc'?'':'sec'}" data-tab="calc">Calculadora</button><button class="btn ${pest==='que'?'':'sec'}" data-tab="que">¿Qué cocino?</button><button class="btn ${pest==='tabla'?'':'sec'}" data-tab="tabla">Tabla HC</button></div><div id="sub"></div>`;
   c.onclick=e=>{const b=e.target.closest('[data-tab]');if(b){pest=b.dataset.tab;recetasView(c);}};
   const sub=c.querySelector('#sub');
-  if(pest==='recetas')listaRecetas(sub);else await calculadora(sub);
+  if(pest==='recetas')listaRecetas(sub);else if(pest==='que')await queCocino(sub);else if(pest==='tabla')tablaHC(sub);else await calculadora(sub);
 }
 export const ops=(a)=>a.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
 function listaRecetas(sub){
@@ -174,7 +176,7 @@ function listaRecetas(sub){
 function verReceta(id,sub){
   const r=ctx.porId[id],n=M.nutPorcion(r,ctx);
   const mod=modal(`<h2>${esc(r.n)}</h2><p class="mut">${r.t} min · ${r.por} porc.</p><div class="nota">Por porción: ${linea(n)}</div><h3>Ingredientes</h3><ul>${r.ing.map(([i,g])=>`<li>${esc(ctx.mapa[i]?.n||i)}: ${g} g</li>`).join('')}</ul><h3>Preparación</h3><ol>${r.pasos.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><p class="mut">${esc(FUENTE)}</p><div class="fila">${r.propia?'<button class="btn sec" data-del>Eliminar</button>':''}<button class="btn" data-x>Cerrar</button></div>`);
-  mod.onclick=async e=>{if(e.target.closest('[data-del]')&&confirm('¿Eliminar esta receta? Los menús ya guardados que la usan dejarán de mostrarla.')){await borrar('recetas',id);await cargar(ctx.perfil);mod.remove();listaRecetas(sub);}};
+  mod.onclick=async e=>{if(e.target.closest('[data-del]')&&confirm('¿Eliminar esta receta? Los menús ya guardados que la usan dejarán de mostrarla.')){await borrar('recetas',id);await cargar(ctx.perfil);mod.remove();(pest==='que'?queCocino(sub):listaRecetas(sub));}};
 }
 function alMenu(id){
   if(!ctx.semana)return alert('Primero genera tu menú semanal en "Mi menú".');
@@ -216,7 +218,7 @@ async function calculadora(sub){
   sub.onclick=async e=>{
     const pk=e.target.closest('[data-pick]');
     if(pk){elegido=pk.dataset.pick;const a=ctx.mapa[elegido];sub.querySelector('#res').innerHTML='';
-      sub.querySelector('#sel').innerHTML=`<p><b>${esc(a.n)}</b><br><span class="mut">Por 100 g: ${a.kcal} kcal · P ${a.p} · C ${a.c} · Fibra ${a.fi} · G ${a.g}</span></p><label for="gg">Cantidad (g o ml)</label><input id="gg" type="number" inputmode="decimal" min="1" max="5000"><p class="err" id="eg" role="alert"></p><button class="btn blk" data-ok>Agregar a hoy</button>`;return;}
+      sub.querySelector('#sel').innerHTML=`<p><b>${esc(a.n)}</b><br><span class="mut">Por 100 g: ${a.kcal} kcal · P ${a.p} · C ${a.c} · Fibra ${a.fi} · G ${a.g}${a.ig!=null?` · IG ${a.ig} (${M.nivelIG(a.ig)})`:''}</span></p><label for="gg">Cantidad (g o ml)</label><input id="gg" type="number" inputmode="decimal" min="1" max="5000"><p class="err" id="eg" role="alert"></p><button class="btn blk" data-ok>Agregar a hoy</button>`;return;}
     if(e.target.closest('[data-ok]')){const g=+sub.querySelector('#gg').value;if(!(g>0&&g<=5000)){sub.querySelector('#eg').textContent='Ingresa una cantidad entre 1 y 5000.';return;}
       reg.extras.push({id:elegido,g});await guardar('menus','registro-'+f,reg);return calculadora(sub);}
     const rm=e.target.closest('[data-rm]');
@@ -227,10 +229,103 @@ async function calculadora(sub){
 function nuevoAlimento(sub){
   const cats=[['proteina','Proteína'],['lacteo','Lácteo'],['verdura','Verdura'],['fruta','Fruta'],['grasa','Grasa'],['cereal','Cereal'],['legumbre','Legumbre']];
   const campos=[['kcal','Calorías (kcal)'],['p','Proteínas (g)'],['c','Carbohidratos (g)'],['fi','Fibra (g)'],['g','Grasas (g)']];
-  const mod=modal(`<h2>Alimento propio</h2><p class="mut">Valores por 100 g o 100 ml, según su etiqueta.</p><label for="an">Nombre *</label><input id="an"><label for="ac">Categoría</label><select id="ac">${ops(cats)}</select>${campos.map(([k,l])=>`<label for="a-${k}">${l}</label><input id="a-${k}" type="number" inputmode="decimal" min="0" max="${k==='kcal'?900:100}" step="any">`).join('')}<p class="err" id="ae" role="alert"></p><div class="fila"><button class="btn sec" data-x>Cancelar</button><button class="btn" data-ok>Guardar</button></div>`);
+  const mod=modal(`<h2>Alimento propio</h2><p class="mut">Valores por 100 g o 100 ml, según su etiqueta.</p><label for="an">Nombre *</label><input id="an"><label for="ac">Categoría</label><select id="ac">${ops(cats)}</select>${campos.map(([k,l])=>`<label for="a-${k}">${l}</label><input id="a-${k}" type="number" inputmode="decimal" min="0" max="${k==='kcal'?900:100}" step="any">`).join('')}<label for="ig">Índice glucémico (opcional, 0 a 120)</label><input id="ig" type="number" inputmode="numeric" min="0" max="120"><p class="err" id="ae" role="alert"></p><div class="fila"><button class="btn sec" data-x>Cancelar</button><button class="btn" data-ok>Guardar</button></div>`);
   mod.addEventListener('click',async e=>{if(!e.target.closest('[data-ok]'))return;const q=s=>mod.querySelector(s),a={id:'a'+Date.now(),n:q('#an').value.trim(),cat:q('#ac').value,fuente:'Ingresado por el usuario'};
     if(!a.n)return q('#ae').textContent='Escribe un nombre.';
     for(const [k] of campos){const v=q('#a-'+k).value;a[k]=v===''?0:+v;if(!(a[k]>=0&&a[k]<=(k==='kcal'?900:100)))return q('#ae').textContent='Revisa los valores: kcal hasta 900 y el resto hasta 100 g.';}
     if(a.kcal===0&&a.p+a.c+a.g===0)return q('#ae').textContent='Ingresa al menos un valor nutricional.';
+    const igv=q('#ig').value;if(igv!==''){if(!(+igv>=0&&+igv<=120))return q('#ae').textContent='El índice glucémico debe estar entre 0 y 120.';a.ig=Math.round(+igv);}else a.ig=null;
     await guardar('alimentos',a.id,a);await cargar(ctx.perfil);mod.remove();calculadora(sub);});
+}
+
+/* ---------- ¿QUÉ COCINO? ---------- */
+async function queCocino(sub){
+  const disp=new Set((await leer('ajustes','disponibles'))||[]);
+  const guardarD=()=>guardar('ajustes','disponibles',[...disp]);
+  const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const hoyI=hoy(),en3=M.fechaISO(new Date(Date.now()+3*864e5));
+  sub.innerHTML=`<div class="card"><h2>¿Qué cocino con lo que tengo?</h2><p class="mut">Marca los ingredientes que tienes en casa y te sugiero recetas para aprovecharlos.</p>
+  <label for="qb">Agregar ingrediente</label><input id="qb" type="search" placeholder="Ej.: huevo"><div id="qr"></div>
+  <div class="chips" id="qc"></div>
+  <div class="fila"><button class="btn sec mini" data-desp>Usar mi despensa</button><button class="btn sec mini" data-venc>Lo que vence pronto</button><button class="btn sec mini" data-lim>Limpiar</button></div>
+  <label class="chk"><input type="checkbox" id="qa" checked>Asumir que tengo aceite</label>
+  <label class="chk"><input type="checkbox" id="qre" checked>Respetar mis restricciones</label>
+  <label for="qt">Tipo de comida</label><select id="qt"><option value="">Todas</option>${ops(Object.entries(TAGS))}</select></div><div id="qres"></div>`;
+  const q=s=>sub.querySelector(s);
+  const chips=()=>{q('#qc').innerHTML=[...disp].map(id=>`<span class="chip">${esc(ctx.mapa[id]?.n||id)}<button type="button" data-rq="${id}" aria-label="Quitar ${esc(ctx.mapa[id]?.n||id)}">×</button></span>`).join('')||'<span class="mut">Aún no marcaste ingredientes.</span>';};
+  const nom=id=>esc(ctx.mapa[id]?.n||id);
+  const resultados=()=>{
+    const aceite=q('#qa').checked,tipo=q('#qt').value,res=q('#qre').checked,dp=ctx.despensa||{};
+    if(!disp.size){q('#qres').innerHTML='';return;}
+    const L=ctx.recetas.filter(r=>(!tipo||r.tags.includes(tipo))&&!(res&&M.excluida(r,ctx.perfil,ctx.mapa))).map(r=>({r,...M.coincidencia(r,disp,aceite)}))
+      .filter(x=>x.usados>0&&x.falta.length<=2).sort((a,b)=>a.falta.length-b.falta.length||b.usados-a.usados||b.pct-a.pct||(ctx.favs.includes(b.r.id)-ctx.favs.includes(a.r.id)));
+    const grupo=n=>L.filter(x=>x.falta.length===n);
+    const tarj=x=>{const n=M.nutPorcion(x.r,ctx),poca=x.tiene.filter(id=>disp.has(id)&&dp[id]&&dp[id].g>0&&dp[id].g<x.r.ing.find(i=>i[0]===id)[1]/x.r.por);
+      return `<div class="card"><b>${esc(x.r.n)}</b><p class="mut">${Math.round(n.kcal)} kcal · P ${r1(n.p)} g · C neto ${r1(n.cn)} g · ${x.r.t} min</p><p class="mut">Tienes: ${x.tiene.map(nom).join(', ')}</p>${x.falta.length?`<p>Te falta: <b>${x.falta.map(nom).join(', ')}</b></p>`:''}${poca.length?`<p class="mut">Cantidad justa de: ${poca.map(nom).join(', ')}</p>`:''}<div class="fila"><button class="btn sec mini" data-ver="${x.r.id}">Ver</button><button class="btn mini" data-add="${x.r.id}">Al menú</button></div></div>`;};
+    const sec=(t,a)=>a.length?`<h2>${t}</h2>${a.map(tarj).join('')}`:'';
+    q('#qres').innerHTML=sec('Puedes cocinarlas ya',grupo(0))+sec('Te falta 1 ingrediente',grupo(1))+sec('Te faltan 2 ingredientes',grupo(2))||'<div class="card"><p class="mut">Con esos ingredientes no encontré recetas cercanas. Prueba agregando más o desmarca "Respetar mis restricciones".</p></div>';
+  };
+  const todoR=()=>{chips();resultados();};
+  sub.oninput=e=>{
+    if(e.target.id==='qb'){const t=norm(e.target.value.trim());q('#qr').innerHTML=t?Object.values(ctx.mapa).filter(a=>!disp.has(a.id)&&norm(a.n).includes(t)).slice(0,8).map(a=>`<button class="btn sec blk" style="margin-top:6px;justify-content:flex-start" data-pk="${a.id}">${esc(a.n)}</button>`).join('')||'<p class="mut">Sin resultados.</p>':'';}
+  };
+  sub.onchange=e=>{if(['qa','qre','qt'].includes(e.target.id))resultados();};
+  sub.onclick=async e=>{const g=k=>e.target.closest(`[data-${k}]`)?.dataset[k];
+    if(g('pk')){disp.add(g('pk'));await guardarD();q('#qb').value='';q('#qr').innerHTML='';return todoR();}
+    if(g('rq')){disp.delete(g('rq'));await guardarD();return todoR();}
+    if(e.target.closest('[data-lim]')){disp.clear();await guardarD();return todoR();}
+    if(e.target.closest('[data-desp]')){Object.entries(ctx.despensa||{}).forEach(([id,x])=>{if(x.g>0&&ctx.mapa[id])disp.add(id);});await guardarD();return todoR();}
+    if(e.target.closest('[data-venc]')){const ids=Object.entries(ctx.despensa||{}).filter(([id,x])=>x.g>0&&x.vence&&x.vence<=en3&&ctx.mapa[id]).map(x=>x[0]);
+      if(!ids.length)return alert('No hay alimentos de tu despensa por vencer en los próximos 3 días.');
+      disp.clear();ids.forEach(id=>disp.add(id));await guardarD();return todoR();}
+    if(g('ver'))return verReceta(g('ver'),sub);
+    if(g('add'))return alMenu(g('add'));
+  };
+  todoR();
+}
+
+/* ---------- MODELO DEL PLATO, IG Y TABLA HC ---------- */
+const GRP={verdura:'veg',proteina:'prot',lacteo:'prot',cereal:'carb',legumbre:'carb',fruta:'carb',grasa:'fat'};
+function platoHtml(ing,factor,r){
+  const t={veg:0,prot:0,carb:0,fat:0};
+  for(const [id,g] of ing){const k=GRP[ctx.mapa[id]?.cat];if(k)t[k]+=g*factor/r.por;}
+  const ig=M.igItems(ing.map(([id,g])=>[id,g*factor/r.por]),ctx.mapa);
+  const f=(l,x,m)=>`<div class="kv"><span>${l}</span><span><b>${Math.round(x)} g</b> <span class="mut">${m}</span></span></div>`;
+  return `<h3>Distribución del plato</h3>`+f('Verduras',t.veg,'modelo: ½ plato (≥ 150 g)')+f('Proteína',t.prot,'modelo: 80 a 100 g')+f('Carbohidratos',t.carb,'modelo: ¼ plato (≈ 90 a 120 g cocidos)')+f('Grasas',t.fat,'modelo: 1 porción (1 cda de aceite)')+(ig?`<div class="kv"><span>Índice glucémico del plato</span><b>≈ ${Math.round(ig.ig)} (${M.nivelIG(ig.ig)})</b></div>`:'')+'<p class="mut">Son pesos de referencia del modelo del plato; no son una indicación profesional.</p>';
+}
+function modeloPlato(){
+  modal(`<h2>Almuerzo y cena: cómo distribuir el plato</h2>
+  <svg viewBox="0 0 220 220" class="plato" role="img" aria-label="Plato: mitad verduras, un cuarto proteína, un cuarto carbohidratos">
+   <circle cx="110" cy="110" r="104" fill="var(--card)" stroke="var(--ln)" stroke-width="3"/>
+   <path d="M110 110 L110 10 A100 100 0 0 1 110 210 Z" fill="#5fae6e"/>
+   <path d="M110 110 L110 10 A100 100 0 0 0 10 110 Z" fill="#e07a5f"/>
+   <path d="M110 110 L10 110 A100 100 0 0 0 110 210 Z" fill="#e9c46a"/>
+   <g font-size="13" font-weight="700" fill="#1b2a24" text-anchor="middle"><text x="160" y="106">½ Verduras</text><text x="60" y="64">¼ Proteína</text><text x="58" y="162">¼ Carbohid.</text></g></svg>
+  <div class="kv"><span><b>½ plato: verduras</b></span><span class="mut">variedad de colores, preferentemente crudas</span></div>
+  <div class="kv"><span><b>¼ plato: proteína</b> (80 a 100 g)</span><span class="mut">carne, huevo, queso, legumbres (arvejas, lentejas, porotos)</span></div>
+  <div class="kv"><span><b>¼ plato: carbohidratos</b></span><span class="mut">40 g en crudo o 3 cdas. soperas en cocido de cereales integrales (pasta, arroz), legumbres, papa, batata, choclo, 2 rebanadas de pan, 2 tapas de empanada</span></div>
+  <div class="kv"><span><b>Grasas saludables</b> (1 porción)</span><span class="mut">1 cda de aceite crudo, ½ palta, 5 aceitunas, 1 cda de semillas, 10 frutos secos</span></div>
+  <h3>Índice glucémico (IG)</h3>
+  <p><span class="ig bajo">bajo ≤ 55</span> <span class="ig moderado">moderado 56 a 69</span> <span class="ig alto">alto ≥ 70</span></p>
+  <p class="mut">Por defecto el generador prefiere platos de IG bajo y evita los de IG alto con muchos carbohidratos (puedes desactivarlo en Ajustes). El IG de un plato es un promedio ponderado por sus carbohidratos y es aproximado: la respuesta de la glucemia varía según la persona, la cocción y la combinación de alimentos. La app no calcula ni sugiere dosis de insulina; coordina los cambios importantes con tu equipo médico.</p>
+  <p class="mut">${esc(FUENTE_IG)}</p><button class="btn blk" data-x>Cerrar</button>`);
+}
+function tablaHC(sub){
+  const grupos=[...new Set(TABLA_HC.map(x=>x.g))];
+  sub.innerHTML=`<div class="card"><h2>Tabla de hidratos de carbono (HC)</h2><p class="mut">1 ración de HC = 10 g de hidratos de carbono. Toca un alimento para calcular tu porción.</p>
+  <label for="tq">Buscar</label><input id="tq" type="search" placeholder="Ej.: arroz"><label for="tg">Grupo</label><select id="tg"><option value="">Todos</option>${grupos.map(g=>`<option>${esc(g)}</option>`).join('')}</select>
+  <label for="tn">Nivel de IG</label><select id="tn"><option value="">Todos</option><option value="bajo">Bajo (55 o menos)</option><option value="moderado">Moderado (56 a 69)</option><option value="alto">Alto (70 o más)</option></select></div><div id="tl"></div><p class="mut">${esc(FUENTE_IG)}</p>`;
+  const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const q=s=>sub.querySelector(s);
+  const pintar=()=>{
+    const t=norm(q('#tq').value.trim()),g=q('#tg').value,n=q('#tn').value;
+    const L=TABLA_HC.map((x,i)=>({...x,i})).filter(x=>(!g||x.g===g)&&(!t||norm(x.n).includes(t))&&(!n||M.nivelIG(x.ig)===n)).slice(0,80);
+    q('#tl').innerHTML=L.map(x=>`<button class="fila-tabla" data-th="${x.i}"><span><b>${esc(x.n)}</b><br><span class="mut">${x.r?`${x.r} g = 1 ración de HC (≈ ${r1(1000/x.r)} g de HC por 100 g)`:'sin dato de ración'}</span></span>${x.ig!=null?`<span class="ig ${M.nivelIG(x.ig)}">IG ${x.ig}</span>`:'<span class="mut">IG s/d</span>'}</button>`).join('')||'<p class="mut">Sin resultados.</p>';
+  };
+  sub.oninput=sub.onchange=pintar;
+  sub.onclick=e=>{const b=e.target.closest('[data-th]');if(!b)return;const x=TABLA_HC[+b.dataset.th];
+    if(!x.r)return alert('Esta fila de la tabla no trae dato de ración para calcular.');
+    const mod=modal(`<h2>${esc(x.n)}</h2><p class="mut">1 ración de HC = ${x.r} g${x.ig!=null?` · IG ${x.ig} (${M.nivelIG(x.ig)})`:''}</p><label for="th">Tu porción (g o ml)</label><input id="th" type="number" inputmode="decimal" min="1" max="5000"><div class="nota" id="thr">Escribe la cantidad.</div><button class="btn blk" data-x>Cerrar</button>`);
+    mod.querySelector('#th').oninput=ev=>{const g=+ev.target.value;mod.querySelector('#thr').textContent=g>0&&g<=5000?`≈ ${r1(g*10/x.r)} g de HC (${r1(g/x.r)} raciones)`:'Ingresa una cantidad entre 1 y 5000.';};};
+  pintar();
 }
